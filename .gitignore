@@ -128,4 +128,4 @@ dmypy.json
 # Pyre type checker
 .pyre/
 # Ignore the test temp.py file
-src/gmshairfoil2d/temp.py
+#src/gmshairfoil2d/temp.py
