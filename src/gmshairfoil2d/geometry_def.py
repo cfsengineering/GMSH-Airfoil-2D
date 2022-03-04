@@ -42,8 +42,7 @@ class CurveLoop:
         self.line_list = line_list
         self.tag_list = []
         # generate the Lines tag list to folow
-        for line in line_list:
-            self.tag_list.append(line.tag)
+        self.tag_list = [line.tag for line in self.line_list]
         # create the gmsh object and store the tag of the geometric object
         self.tag = gmsh.model.occ.addCurveLoop(self.tag_list)
 
