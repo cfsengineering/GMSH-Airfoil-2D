@@ -35,15 +35,15 @@ class Line:
 
 
 class CurveLoop:
-    def __init__(self, line_array):
-        # Line array must be in the order of the wanted CurveLoop and closed
-        self.line_array = line_array
-        self.tag_array = []
-        # generate the Lines tag array to folow
-        for line in line_array:
-            self.tag_array.append(line.tag)
+    def __init__(self, line_list):
+        # Line list must be in the order of the wanted CurveLoop and closed
+        self.line_list = line_list
+        self.tag_list = []
+        # generate the Lines tag list to folow
+        for line in line_list:
+            self.tag_list.append(line.tag)
         # create the gmsh object and store the tag of the geometric object
-        self.tag = gmsh.model.occ.addCurveLoop(self.tag_array)
+        self.tag = gmsh.model.occ.addCurveLoop(self.tag_list)
 
 
 class Circle:
@@ -65,9 +65,9 @@ class PlaneSurface:
     define holes in the surface domaine
     """
 
-    def __init__(self, curveLoop_array):
-        self.curveLoop_array = curveLoop_array
-        self.tag_array = [curveLoop.tag for curveLoop in self.curveLoop_array]
+    def __init__(self, curveLoop_list):
+        self.curveLoop_list = curveLoop_list
+        self.tag_list = [curveLoop.tag for curveLoop in self.curveLoop_list]
         self.dim = 2
         # create the gmsh object and store the tag of the geometric object
-        self.tag = gmsh.model.occ.addPlaneSurface(self.tag_array)
+        self.tag = gmsh.model.occ.addPlaneSurface(self.tag_list)
