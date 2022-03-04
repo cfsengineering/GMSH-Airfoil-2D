@@ -5,9 +5,8 @@ Created on Thu Mar  3 12:02:13 2022
 
 @author: tony
 """
-# ------------------------------------------------------------------------------
+
 import gmsh
-import numpy as np
 
 # This script contain the definition of geometrical objects needed to build
 # the geometry and latter the mesh
@@ -68,13 +67,7 @@ class PlaneSurface:
 
     def __init__(self, curveLoop_array):
         self.curveLoop_array = curveLoop_array
-        self.tag_array = []
-        for curveLoop in curveLoop_array:
-            self.tag_array.append(curveLoop.tag)
+        self.tag_array = [curveLoop.tag for curveLoop in self.curveLoop_array]
         self.dim = 2
         # create the gmsh object and store the tag of the geometric object
         self.tag = gmsh.model.occ.addPlaneSurface(self.tag_array)
-
-
-# end
-# ------------------------------------------------------------------------------
