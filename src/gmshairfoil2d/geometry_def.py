@@ -7,6 +7,8 @@ Created on Thu Mar  3 12:02:13 2022
 """
 
 import gmsh
+import numpy as np
+import math
 
 # This script contain the definition of geometrical objects needed to build
 # the geometry and latter the mesh
@@ -47,15 +49,60 @@ class CurveLoop:
 
 
 class Circle:
-    def __init__(self, xc, yc, zc, radius):
+    def __init__(self, xc, yc, zc, radius, mesh_size=None):
         # Position of the disk center
         self.xc = xc
         self.yc = yc
         self.zc = zc
         self.radius = radius
+        self.mesh_size = mesh_size
         self.dim = 1
-        # create the gmsh object and store the tag of the geometric object
-        self.tag = gmsh.model.occ.addCircle(self.xc, self.yc, self.zc, self.radius)
+        if mesh_size is None:
+            # create the Circle and directly create the corresponding curveloop
+            self.tag = gmsh.model.occ.addCurveLoop(
+                gmsh.model.occ.addCircle(self.xc, self.yc, self.zc, self.radius)
+            )
+        else:
+            # create a structured arcCricle to merge in one curveloop
+            self.distribution = math.floor((np.pi * 2 * self.radius) / self.mesh_size)
+            self.arcCircle_list = [
+                gmsh.model.occ.addCircle(
+                    self.xc,
+                    self.yc,
+                    self.zc,
+                    self.radius,
+                    angle1=2 * np.pi / self.distribution * i,
+                    angle2=2 * np.pi / self.distribution * (1 + i),
+                )
+                for i in range(0, self.distribution)
+            ]
+            self.tag = gmsh.model.occ.addCurveLoop(self.arcCircle_list)
+
+
+class Rectangle:
+    def __init__(self, xc, yc, z, dx, dy, mesh_size):
+        self.xc = xc
+        self.yc = yc
+        self.z = z
+        self.dx = dx
+        self.dy = dy
+        self.mesh_size = mesh_size
+        self.dim = 1
+        # generate 4 points, 4 lines
+        self.points = [
+            Point(self.xc - self.dx / 2, self.yc - self.dy / 2, z, self.mesh_size),
+            Point(self.xc + self.dx / 2, self.yc - self.dy / 2, z, self.mesh_size),
+            Point(self.xc + self.dx / 2, self.yc + self.dy / 2, z, self.mesh_size),
+            Point(self.xc - self.dx / 2, self.yc + self.dy / 2, z, self.mesh_size),
+        ]
+        self.lines = [
+            Line(self.points[0], self.points[1]),
+            Line(self.points[1], self.points[2]),
+            Line(self.points[2], self.points[3]),
+            Line(self.points[3], self.points[0]),
+        ]
+        # Create the corresponding curveloop
+        self.tag = CurveLoop(self.lines).tag
 
 
 class PlaneSurface:
