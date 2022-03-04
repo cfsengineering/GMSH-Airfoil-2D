@@ -1,17 +1,11 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Mar  3 12:02:13 2022
-
-@author: tony
-"""
-
 import gmsh
 import numpy as np
 import math
 
-# This script contain the definition of geometrical objects needed to build
-# the geometry and latter the mesh
+"""
+This script contain the definition of geometrical objects needed to build
+the geometry and latter the mesh
+"""
 
 
 class Point:
