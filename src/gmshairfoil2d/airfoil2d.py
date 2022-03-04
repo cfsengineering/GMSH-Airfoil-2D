@@ -44,8 +44,6 @@ class AirfoilSpline:
         self.le = min(self.points, key=attrgetter("x"))
         self.te = max(self.points, key=attrgetter("x"))
         self.points_tag = [point.tag for point in self.points]
-        print(self.le.tag, self.te.tag)
-
         if self.le.tag < self.te.tag:
             # create a spline from the leading edge to the trailing edge
             self.upper_spline_tag = gmsh.model.occ.addSpline(
