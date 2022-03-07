@@ -101,8 +101,6 @@ class AirfoilSpline:
 
 
 def NACA_4_digit_geom(alpha, first_d, second_d, third_d, fourth_d, nb_points=100):
-
-    # parameter from NACA DIGIT
     theta_line = np.linspace(0, np.pi, nb_points)
     x_line = 0.5 * (1 - np.cos(theta_line))
     m = first_d / 100
@@ -163,9 +161,5 @@ def NACA_4_digit_geom(alpha, first_d, second_d, third_d, fourth_d, nb_points=100
     final_y = np.concatenate((y_u[:-1], np.flip(y_l[1:])), axis=0)
 
     # create the 3d points cloud
-    points_cloud = []
-    nb_pts_final = len(final_x)
-
-    for k in range(0, nb_pts_final):
-        points_cloud.append([final_x[k], final_y[k], 0])
+    points_cloud = [[final_x[k], final_y[k], 0] for k in range(0, len(final_x))]
     return points_cloud
