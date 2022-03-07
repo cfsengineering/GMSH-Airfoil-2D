@@ -1,7 +1,7 @@
 import requests
 import os
 
-path = "../database"
+path = "../../database"
 
 if not os.path.exists(path):
     os.makedirs(path)
@@ -36,6 +36,3 @@ def get_airfoil_file(airfoil_name):
             open(path + file, "wb").write(r.content)
         except OSError:
             print("Failed creating the file :", file)
-
-
-print(len(get_all_available_airfoil_names()))
