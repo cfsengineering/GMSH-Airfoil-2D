@@ -42,7 +42,7 @@ class CurveLoop:
 
 
 class Circle:
-    def __init__(self, xc, yc, zc, radius, mesh_size=None):
+    def __init__(self, xc, yc, zc, radius, mesh_size):
         # Position of the disk center
         self.xc = xc
         self.yc = yc
@@ -50,26 +50,23 @@ class Circle:
         self.radius = radius
         self.mesh_size = mesh_size
         self.dim = 1
-        if mesh_size is None:
-            # create the Circle and directly create the corresponding curveloop
-            self.tag = gmsh.model.occ.addCurveLoop(
-                gmsh.model.occ.addCircle(self.xc, self.yc, self.zc, self.radius)
+        # create a structured arcCricle to merge in one curveloop
+        self.distribution = math.floor((np.pi * 2 * self.radius) / self.mesh_size)
+        self.arcCircle_list = [
+            gmsh.model.occ.addCircle(
+                self.xc,
+                self.yc,
+                self.zc,
+                self.radius,
+                angle1=2 * np.pi / self.distribution * i,
+                angle2=2 * np.pi / self.distribution * (1 + i),
             )
-        else:
-            # create a structured arcCricle to merge in one curveloop
-            self.distribution = math.floor((np.pi * 2 * self.radius) / self.mesh_size)
-            self.arcCircle_list = [
-                gmsh.model.occ.addCircle(
-                    self.xc,
-                    self.yc,
-                    self.zc,
-                    self.radius,
-                    angle1=2 * np.pi / self.distribution * i,
-                    angle2=2 * np.pi / self.distribution * (1 + i),
-                )
-                for i in range(0, self.distribution)
-            ]
-            self.tag = gmsh.model.occ.addCurveLoop(self.arcCircle_list)
+            for i in range(0, self.distribution)
+        ]
+        self.tag = gmsh.model.occ.addCurveLoop(self.arcCircle_list)
+        # Define BC
+        self.bc = gmsh.model.addPhysicalGroup(self.dim, [self.tag])
+        self.physical_name = gmsh.model.setPhysicalName(self.dim, self.bc, "Farfield")
 
 
 class Rectangle:
@@ -97,6 +94,22 @@ class Rectangle:
         # Create the corresponding curveloop
         self.tag = CurveLoop(self.lines).tag
 
+        # Define BC
+        self.wall_bot = self.lines[0]
+        self.outlet = self.lines[1]
+        self.wall_top = self.lines[2]
+        self.inlet = self.lines[3]
+
+        self.bc_in = gmsh.model.addPhysicalGroup(self.dim, [self.inlet.tag])
+        gmsh.model.setPhysicalName(self.dim, self.bc_in, "Inlet")
+        self.bc_out = gmsh.model.addPhysicalGroup(self.dim, [self.outlet.tag])
+        gmsh.model.setPhysicalName(self.dim, self.bc_out, "Outlet")
+        self.bc_wall = gmsh.model.addPhysicalGroup(
+            self.dim, [self.wall_bot.tag, self.wall_top.tag]
+        )
+        gmsh.model.setPhysicalName(self.dim, self.bc_wall, "Wall")
+        self.bc = [self.bc_in, self.bc_out, self.bc_wall]
+
 
 class PlaneSurface:
     """
@@ -111,3 +124,7 @@ class PlaneSurface:
         self.dim = 2
         # create the gmsh object and store the tag of the geometric object
         self.tag = gmsh.model.occ.addPlaneSurface(self.tag_list)
+
+        # Define BC
+        self.ps = gmsh.model.addPhysicalGroup(self.dim, [self.tag])
+        gmsh.model.setPhysicalName(self.dim, self.ps, "Fluid")

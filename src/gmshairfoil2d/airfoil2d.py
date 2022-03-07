@@ -11,7 +11,9 @@ class Airfoil:
     will not be taken into account
     """
 
-    def __init__(self, point_cloud, mesh_size):
+    def __init__(self, point_cloud, mesh_size, name="Airfoil"):
+        self.name = name
+        self.dim = 1
         # Generate Points object from the point_cloud
         self.points = [
             Point(point_cord[0], point_cord[1], point_cord[2], mesh_size)
@@ -25,6 +27,9 @@ class Airfoil:
 
         self.CurveLoop = CurveLoop(self.lines)
         self.tag = self.CurveLoop.tag
+        # Define BC
+        self.bc = gmsh.model.addPhysicalGroup(self.dim, [self.tag])
+        gmsh.model.setPhysicalName(self.dim, self.bc, self.name)
 
 
 class AirfoilSpline:
@@ -34,13 +39,14 @@ class AirfoilSpline:
     of only few points
     """
 
-    def __init__(self, point_cloud, mesh_size):
+    def __init__(self, point_cloud, mesh_size, name="Airfoil"):
+        self.name = name
+        self.dim = 1
         # Generate Points object from the point_cloud
         self.points = [
             Point(point_cord[0], point_cord[1], point_cord[2], mesh_size)
             for point_cord in point_cloud
         ]
-
         self.le = min(self.points, key=attrgetter("x"))
         self.te = max(self.points, key=attrgetter("x"))
         self.points_tag = [point.tag for point in self.points]
@@ -80,6 +86,10 @@ class AirfoilSpline:
                 ]
             )
         # form the curvedloop
-        self.tag = self.tag = gmsh.model.occ.addCurveLoop(
+        self.tag = gmsh.model.occ.addCurveLoop(
             [self.upper_spline_tag, self.lower_spline_tag]
         )
+
+        # Define BC
+        self.bc = gmsh.model.addPhysicalGroup(self.dim, [self.tag])
+        gmsh.model.setPhysicalName(self.dim, self.bc, self.name)
