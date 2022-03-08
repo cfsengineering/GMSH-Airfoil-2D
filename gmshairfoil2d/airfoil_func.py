@@ -2,6 +2,10 @@ import requests
 import os
 import numpy as np
 
+import gmshairfoil2d.__init__
+
+LIB_DIR = os.path.dirname(gmshairfoil2d.__init__.__file__)
+
 
 def get_all_available_airfoil_names():
     """
@@ -34,10 +38,10 @@ def get_airfoil_file(airfoil_name):
     airfoil_name : srt
         name of the airfoil
     """
-    path = "../../database"
-
-    if not os.path.exists(path):
-        os.makedirs(path)
+    database_dir = LIB_DIR + "/../database"
+    print(database_dir)
+    if not os.path.exists(database_dir):
+        os.makedirs(database_dir)
 
     url = f"https://m-selig.ae.illinois.edu/ads/coord/{airfoil_name}.dat"
 
@@ -48,9 +52,9 @@ def get_airfoil_file(airfoil_name):
 
     file = f"/{airfoil_name}.dat"
 
-    if not os.path.exists(path + file):
+    if not os.path.exists(database_dir + file):
         try:
-            open(path + file, "wb").write(r.content)
+            open(database_dir + file, "wb").write(r.content)
         except OSError:
             print("Failed creating the file :", file)
 
