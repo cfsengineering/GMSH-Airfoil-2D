@@ -100,12 +100,12 @@ class AirfoilSpline:
         gmsh.model.setPhysicalName(self.dim, self.bc, self.name)
 
 
-def NACA_4_digit_geom(alpha, first_d, second_d, third_d, fourth_d, nb_points=100):
+def NACA_4_digit_geom(NACA_name, nb_points=100):
     theta_line = np.linspace(0, np.pi, nb_points)
     x_line = 0.5 * (1 - np.cos(theta_line))
-    m = first_d / 100
-    p = second_d / 10
-    t = (third_d * 10 + fourth_d) / 100
+    m = int(NACA_name[0]) / 100
+    p = int(NACA_name[1]) / 10
+    t = (int(NACA_name[2]) * 10 + int(NACA_name[3])) / 100
     # camber line front of the airfoil (befor p)
     x_line_front = x_line[x_line < p]
     # camber line back of the airfoil (after p)
