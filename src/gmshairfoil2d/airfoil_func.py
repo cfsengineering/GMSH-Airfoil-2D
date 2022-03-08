@@ -26,8 +26,8 @@ def get_all_available_airfoil_names():
 
 def get_airfoil_file(airfoil_name):
     """
-    Request the airfoil .dat file at m-selig.ae.illinois.edu
-    and stor it in the databse folder
+    Request the airfoil .dat file at m-selig.ae.illinois.edu and stores it (if found) in the 
+    database folder
     
     Parameters
     ----------

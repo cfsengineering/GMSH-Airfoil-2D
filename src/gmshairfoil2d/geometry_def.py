@@ -89,8 +89,7 @@ class CurveLoop:
 
 class Circle:
     """
-    A class to represent a Circle geometrical object, composed of
-    many arcCircle object of gmsh
+    A class to represent a Circle geometrical object, composed of many arcCircle object of gmsh
     
     ...
     
@@ -150,8 +149,7 @@ class Circle:
 
 class Rectangle:
     """
-    A class to represent a rectangle geometrical object, composed of
-    many 4 Lines object of gmsh
+    A class to represent a rectangle geometrical object, composed of 4 Lines object of gmsh
     
     ...
     
@@ -204,8 +202,7 @@ class Rectangle:
 
     def define_bc(self):
         """
-        Method that define the different markers of the rectangle
-        for the boundary condition
+        Method that define the different markers of the rectangle for the boundary condition
         -------
         """
         # self.lines[0] => wall_bot
@@ -263,8 +260,7 @@ class PlaneSurface:
 
 class Airfoil:
     """
-    A class to represent and airfoil as a CurveLoop object
-    formed with lines
+    A class to represent and airfoil as a CurveLoop object formed with lines
     
     ...
     
@@ -303,8 +299,7 @@ class Airfoil:
 
     def define_bc(self):
         """
-        Method that define the marker of the airfoil
-        for the boundary condition
+        Method that define the marker of the airfoil for the boundary condition
         -------
         """
         self.bc = gmsh.model.addPhysicalGroup(self.dim, self.CurveLoop.tag_list)
@@ -313,8 +308,7 @@ class Airfoil:
 
 class AirfoilSpline:
     """
-    A class to represent and airfoil as a CurveLoop object
-    formed with Splines
+    A class to represent and airfoil as a CurveLoop object formed with Splines
     ...
     
     Attributes
@@ -392,8 +386,7 @@ class AirfoilSpline:
 
     def define_bc(self):
         """
-        Method that define the marker of the airfoil
-        for the boundary condition
+        Method that define the marker of the airfoil for the boundary condition
         -------
         """
         self.bc = gmsh.model.addPhysicalGroup(
