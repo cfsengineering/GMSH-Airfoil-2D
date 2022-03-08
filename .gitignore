@@ -127,3 +127,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+#Ignore the database file containing the airfoil profile
+database
