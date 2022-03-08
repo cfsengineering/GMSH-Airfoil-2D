@@ -1,14 +1,11 @@
+"""
+This script contain the definition of geometrical objects needed to build the geometry.
+"""
+
 from operator import attrgetter
 import gmsh
 import numpy as np
 import math
-
-
-
-"""
-This script contain the definition of geometrical objects needed to build
-the geometry and latter the mesh
-"""
 
 
 class Point:
@@ -78,6 +75,7 @@ class Circle:
 
 class Rectangle:
     def __init__(self, xc, yc, z, dx, dy, mesh_size):
+        
         self.xc = xc
         self.yc = yc
         self.z = z
@@ -85,39 +83,46 @@ class Rectangle:
         self.dy = dy
         self.mesh_size = mesh_size
         self.dim = 1
-        # generate 4 points, 4 lines
+        
+        # Generate the 4 corners of the rectangle
         self.points = [
             Point(self.xc - self.dx / 2, self.yc - self.dy / 2, z, self.mesh_size),
             Point(self.xc + self.dx / 2, self.yc - self.dy / 2, z, self.mesh_size),
             Point(self.xc + self.dx / 2, self.yc + self.dy / 2, z, self.mesh_size),
             Point(self.xc - self.dx / 2, self.yc + self.dy / 2, z, self.mesh_size),
         ]
+        
+        # Generate the 4 lines of the rectangle
         self.lines = [
             Line(self.points[0], self.points[1]),
             Line(self.points[1], self.points[2]),
             Line(self.points[2], self.points[3]),
             Line(self.points[3], self.points[0]),
         ]
-        # Create the corresponding curveloop
+        
+        # Generate the corresponding curveloop
         self.tag = CurveLoop(self.lines).tag
 
-        # Define BC
-        self.wall_bot = self.lines[0]
-        self.outlet = self.lines[1]
-        self.wall_top = self.lines[2]
-        self.inlet = self.lines[3]
-
+    def define_bc(self):
+        
         gmsh.model.occ.synchronize()
-        self.bc_in = gmsh.model.addPhysicalGroup(self.dim, [self.inlet.tag], tag=-1)
+
+        # self.lines[0] => wall_bot
+        # self.lines[1] => outlet
+        # self.lines[2] => wall_top
+        # self.lines[3] => inlet
+        
+        self.bc_in = gmsh.model.addPhysicalGroup(self.dim, [self.lines[3].tag], tag=-1)
         gmsh.model.setPhysicalName(self.dim, self.bc_in, "inlet")
 
-        self.bc_out = gmsh.model.addPhysicalGroup(self.dim, [self.outlet.tag])
+        self.bc_out = gmsh.model.addPhysicalGroup(self.dim, [self.lines[1].tag])
         gmsh.model.setPhysicalName(self.dim, self.bc_out, "outlet")
 
         self.bc_wall = gmsh.model.addPhysicalGroup(
-            self.dim, [self.wall_bot.tag, self.wall_top.tag]
+            self.dim, [self.lines[0].tag, self.lines[2].tag]
         )
         gmsh.model.setPhysicalName(self.dim, self.bc_wall, "wall")
+        
         self.bc = [self.bc_in, self.bc_out, self.bc_wall]
 
 
