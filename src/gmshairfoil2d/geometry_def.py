@@ -203,12 +203,12 @@ class Rectangle:
     def define_bc(self):
         """
         Method that define the different markers of the rectangle for the boundary condition
+        self.lines[0] => wall_bot
+        self.lines[1] => outlet
+        self.lines[2] => wall_top
+        self.lines[3] => inlet
         -------
         """
-        # self.lines[0] => wall_bot
-        # self.lines[1] => outlet
-        # self.lines[2] => wall_top
-        # self.lines[3] => inlet
 
         self.bc_in = gmsh.model.addPhysicalGroup(self.dim, [self.lines[3].tag], tag=-1)
         gmsh.model.setPhysicalName(self.dim, self.bc_in, "inlet")
