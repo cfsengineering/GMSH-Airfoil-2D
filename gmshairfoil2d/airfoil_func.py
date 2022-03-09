@@ -39,7 +39,6 @@ def get_airfoil_file(airfoil_name):
         name of the airfoil
     """
     database_dir = LIB_DIR + "/../database"
-    print(database_dir)
     if not os.path.exists(database_dir):
         os.makedirs(database_dir)
 
