@@ -23,7 +23,6 @@ naca0012 = AirfoilSpline(cloud_points, mesh_size_foil)
 # 3)Generate domain
 surface_domain = PlaneSurface([farfield, naca0012])
 
-
 # Synchronize and generate BC marker
 gmsh.model.occ.synchronize()
 
