@@ -1,4 +1,3 @@
-import sys
 import pickle
 import os
 import gmshairfoil2d.__init__
