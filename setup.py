@@ -8,11 +8,9 @@ DESCRIPTION = "Python tool to genreate 2D mesh around an airfoil"
 LONG_DESCRIPTION = "Python tool to genreate 2D mesh around an airfoil."
 URL = ""
 REQUIRES_PYTHON = ">=3.6.0"
-REQUIRED = ["gmsh==4.9.5",
-"requests==2.26.0",
-"numpy==1.20.3"]
+REQUIRED = []
 README = "README.md"
-PACKAGE_DIR = "./"
+PACKAGE_DIR = "."
 LICENSE = "Apache License 2.0"
 
 
