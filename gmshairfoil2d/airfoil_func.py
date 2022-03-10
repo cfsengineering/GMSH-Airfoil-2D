@@ -5,6 +5,7 @@ import numpy as np
 import gmshairfoil2d.__init__
 
 LIB_DIR = os.path.dirname(gmshairfoil2d.__init__.__file__)
+database_dir = os.path.join(LIB_DIR, os.path.dirname(LIB_DIR), "database")
 
 
 def get_all_available_airfoil_names():
@@ -38,7 +39,6 @@ def get_airfoil_file(airfoil_name):
     airfoil_name : srt
         name of the airfoil
     """
-    database_dir = LIB_DIR + "/../database"
     if not os.path.exists(database_dir):
         os.makedirs(database_dir)
 
