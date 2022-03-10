@@ -19,8 +19,10 @@ def test_mesh_circle_into_rectangle():
 
     mesh_size = 0.1
     Box = Rectangle(0, 0, 0, 2, 2, mesh_size)
-    Disk = Circle(0, 0, 0, 0.5, mesh_size)
-    surface_domain = PlaneSurface([Box, Disk])
+    surface_domain = PlaneSurface([Box])
+    gmsh.model.occ.synchronize()
+    Box.define_bc()
+    surface_domain.define_bc()
     gmsh.model.occ.synchronize()
     # Generate mesh
     gmsh.model.mesh.generate(2)
