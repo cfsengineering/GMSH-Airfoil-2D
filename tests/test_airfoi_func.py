@@ -64,12 +64,12 @@ def test_NACA_4_digit_geom():
     """
     with open(os.path.join(test_data_dir, "naca0012.txt"), "rb") as f:
         naca0012 = pickle.load(f)
-    f.close()
     with open(os.path.join(test_data_dir, "naca4412.txt"), "rb") as f:
         naca4412 = pickle.load(f)
-    f.close()
 
-    assert naca0012 == approx(NACA_4_digit_geom("0012"), 1e-3)
-    assert naca4412 == approx(NACA_4_digit_geom("4412"), 1e-3)
-    f.close()
-    f.close()
+    assert all(
+        [a == approx(b, 1e-3) for a, b in zip(naca0012, NACA_4_digit_geom("0012"))]
+    )
+    assert all(
+        [a == approx(b, 1e-3) for a, b in zip(naca4412, NACA_4_digit_geom("4412"))]
+    )

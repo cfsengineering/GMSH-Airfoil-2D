@@ -8,7 +8,7 @@ LIB_DIR = os.path.dirname(gmshairfoil2d.__init__.__file__)
 test_data_dir = os.path.join(LIB_DIR, os.path.dirname(LIB_DIR), "tests", "test_data")
 
 
-def test_mesh_circle_into_rectangle():
+def test_mesh_rectangle():
     """
     Test if a simple generated mesh formed of a square domain with a circular
     hole inside is meshed correctly
@@ -17,8 +17,8 @@ def test_mesh_circle_into_rectangle():
     # Generate Geometry :
     gmsh.initialize()
 
-    mesh_size = 0.1
-    Box = Rectangle(0, 0, 0, 2, 2, mesh_size)
+    mesh_size = 0.5
+    Box = Rectangle(0, 0, 0, 1, 1, mesh_size)
     surface_domain = PlaneSurface([Box])
     gmsh.model.occ.synchronize()
     Box.define_bc()
@@ -31,10 +31,7 @@ def test_mesh_circle_into_rectangle():
 
     with open(os.path.join(test_data_dir, "mesh_test.su2"), "r") as f:
         mesh_test = f.read()
-    f.close()
-
     with open(os.path.join(test_data_dir, "mesh.su2"), "r") as f:
         mesh_origin = f.read()
-    f.close()
     # Test if conform
     assert mesh_test == mesh_origin
