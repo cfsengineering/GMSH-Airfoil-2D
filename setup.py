@@ -8,7 +8,7 @@ EMAIL = "aidan.jungo@cfse.ch"
 DESCRIPTION = "Python tool to genreate 2D mesh around an airfoil"
 LONG_DESCRIPTION = "Python tool to genreate 2D mesh around an airfoil."
 URL = ""
-REQUIRES_PYTHON = ">=3.6.0"
+REQUIRES_PYTHON = ">=3.7.0"
 
 thelibFolder = os.path.dirname(os.path.realpath(__file__))
 requirementPath =os.path.join(thelibFolder,"requirement.txt")
@@ -40,9 +40,10 @@ setuptools.setup(
     # See: https://pypi.org/classifiers/
     classifiers=[
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
         "Intended Audience :: Developers",

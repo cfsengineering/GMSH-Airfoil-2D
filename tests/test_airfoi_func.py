@@ -30,17 +30,16 @@ def test_get_all_available_airfoil_names():
 def test_get_airfoil_file():
     """
     Test if the download of some profiles is possible and if it is, check if
-    they are conform
-
+    they are conform.
     """
-    profiles = ["naca0010", "naca4412"]
+
     # Remove airfoil if they exist
-    for profile in profiles:
+    for profile in ["naca0010", "naca4412"]:
+        
         proflie_dl_path = os.path.join(database_dir, profile + ".dat")
         if os.path.exists(proflie_dl_path):
             os.remove(proflie_dl_path)
 
-        proflie_test_path = os.path.join(test_data_dir, profile + ".dat")
         # Download them back
         get_airfoil_file(profile)
 
@@ -50,9 +49,11 @@ def test_get_airfoil_file():
         with open(proflie_dl_path, "r") as f:
             profil_dl = f.read()
 
+        proflie_test_path = os.path.join(test_data_dir, profile + ".dat")
         with open(proflie_test_path, "r") as f:
             profil_test = f.read()
-        # Test if conform
+        
+        # Test if the downloaded profile is the same as the test profile
         assert profil_test == profil_dl
 
 
@@ -61,6 +62,7 @@ def test_NACA_4_digit_geom():
     Test if the NACA0012 profil and NACA4412 profil are correctly generated
     
     """
+    
     with open(os.path.join(test_data_dir, "naca0012.txt"), "rb") as f:
         naca0012 = pickle.load(f)
     with open(os.path.join(test_data_dir, "naca4412.txt"), "rb") as f:

@@ -143,6 +143,7 @@ class Circle:
         for the boundary condition
         -------
         """
+        
         self.bc = gmsh.model.addPhysicalGroup(self.dim, self.arcCircle_list)
         self.physical_name = gmsh.model.setPhysicalName(self.dim, self.bc, "farfield")
 
@@ -302,6 +303,7 @@ class Airfoil:
         Method that define the marker of the airfoil for the boundary condition
         -------
         """
+        
         self.bc = gmsh.model.addPhysicalGroup(self.dim, self.CurveLoop.tag_list)
         gmsh.model.setPhysicalName(self.dim, self.bc, self.name)
 
@@ -389,6 +391,7 @@ class AirfoilSpline:
         Method that define the marker of the airfoil for the boundary condition
         -------
         """
+        
         self.bc = gmsh.model.addPhysicalGroup(
             self.dim, [self.upper_spline_tag, self.lower_spline_tag]
         )

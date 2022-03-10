@@ -17,6 +17,7 @@ def get_all_available_airfoil_names():
     _ : list
         return a list containing the same of the available airfoil
     """
+    
     url = "https://m-selig.ae.illinois.edu/ads/coord_database.html"
 
     r = requests.get(url)
@@ -39,6 +40,7 @@ def get_airfoil_file(airfoil_name):
     airfoil_name : srt
         name of the airfoil
     """
+    
     if not os.path.exists(database_dir):
         os.makedirs(database_dir)
 
@@ -49,13 +51,12 @@ def get_airfoil_file(airfoil_name):
     if r.status_code != 200:
         raise Exception(f"Could not get airfoil {airfoil_name}")
 
-    file = f"/{airfoil_name}.dat"
+    file_path = os.path.join(database_dir,f"{airfoil_name}.dat")
 
-    if not os.path.exists(database_dir + file):
-        try:
-            open(database_dir + file, "wb").write(r.content)
-        except OSError:
-            print("Failed creating the file :", file)
+    if not os.path.exists(file_path):
+        
+        with open(file_path, "wb") as f:
+            f.write(r.content)
 
 
 def NACA_4_digit_geom(NACA_name, nb_points=100):
@@ -74,12 +75,14 @@ def NACA_4_digit_geom(NACA_name, nb_points=100):
     _ : int
         return the 3d cloud of points representing the airfoil
     """
+    
     theta_line = np.linspace(0, np.pi, nb_points)
     x_line = 0.5 * (1 - np.cos(theta_line))
 
     m = int(NACA_name[0]) / 100
     p = int(NACA_name[1]) / 10
     t = (int(NACA_name[2]) * 10 + int(NACA_name[3])) / 100
+    
     # thickness line
     y_t = (
         t
@@ -119,6 +122,7 @@ def NACA_4_digit_geom(NACA_name, nb_points=100):
         )
 
         theta = np.arctan(dyc_dx)
+        
         # upper and lower surface
         x_u = x_line - y_t * np.sin(theta)
         y_u = y_c + y_t * np.cos(theta)
