@@ -1,4 +1,5 @@
 import setuptools
+import os
 
 NAME = "gmshairfoil2d"
 VERSION = "0.0.1"
@@ -8,7 +9,14 @@ DESCRIPTION = "Python tool to genreate 2D mesh around an airfoil"
 LONG_DESCRIPTION = "Python tool to genreate 2D mesh around an airfoil."
 URL = ""
 REQUIRES_PYTHON = ">=3.6.0"
+
+thelibFolder = os.path.dirname(os.path.realpath(__file__))
+requirementPath =os.path.join(thelibFolder, profile + "requirements.txt")
 REQUIRED = []
+if os.path.isfile(requirementPath):
+    with open(requirementPath) as f:
+        REQUIRED = f.read().splitlines()
+
 README = "README.md"
 PACKAGE_DIR = "."
 LICENSE = "Apache License 2.0"
