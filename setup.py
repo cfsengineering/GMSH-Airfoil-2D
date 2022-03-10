@@ -11,7 +11,7 @@ URL = ""
 REQUIRES_PYTHON = ">=3.6.0"
 
 thelibFolder = os.path.dirname(os.path.realpath(__file__))
-requirementPath =os.path.join(thelibFolder,"requirements.txt")
+requirementPath =os.path.join(thelibFolder,"requirement.txt")
 REQUIRED = []
 if os.path.isfile(requirementPath):
     with open(requirementPath) as f:
