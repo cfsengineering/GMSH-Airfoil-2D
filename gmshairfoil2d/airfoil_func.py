@@ -140,4 +140,4 @@ def NACA_4_digit_geom(NACA_name, nb_points=100):
     y = np.concatenate((y_u[:-1], np.flip(y_l[1:])), axis=0)
 
     # create the 3d points cloud
-    return [[x[k], y[k], 0] for k in range(0, len(x))]
+    return [(x[k], y[k], 0) for k in range(0, len(x))]

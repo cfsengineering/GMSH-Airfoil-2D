@@ -2,6 +2,7 @@ import sys
 import pickle
 import os
 import gmshairfoil2d.__init__
+from pytest import approx
 from gmshairfoil2d.airfoil_func import (
     get_all_available_airfoil_names,
     get_airfoil_file,
@@ -68,8 +69,7 @@ def test_NACA_4_digit_geom():
         naca4412 = pickle.load(f)
     f.close()
 
-    assert naca0012 == NACA_4_digit_geom("0012")
-    assert naca4412 == NACA_4_digit_geom("4412")
-    assert naca4412 != NACA_4_digit_geom("4413")
+    assert naca0012 == approx(NACA_4_digit_geom("0012"), 1e-3)
+    assert naca4412 == approx(NACA_4_digit_geom("4412"), 1e-3)
     f.close()
     f.close()
