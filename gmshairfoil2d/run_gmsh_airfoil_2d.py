@@ -2,10 +2,11 @@ import argparse
 from airfoil_func import NACA_4_digit_geom, get_all_available_airfoil_names
 from geometry_def import PlaneSurface, Circle, Rectangle, AirfoilSpline
 import gmsh
+import sys
 import math
 
 # Instantiate the parser
-parser = argparse.ArgumentParser(description="Optional app description")
+parser = argparse.ArgumentParser(description="Optional arguement description")
 
 # Switch : Display list of available airfoil
 parser.add_argument(
@@ -35,7 +36,7 @@ parser.add_argument(
     "--box",
     type=str,
     nargs="?",
-    help="Create a box mesh of dimensions(lenght x height) [m]",
+    help="Create a box mesh of dimensions [lenght]x[height] [m]",
 )
 parser.add_argument(
     "--foil_mesh_size",
@@ -60,9 +61,11 @@ parser.add_argument(
 
 # Switch GUI
 parser.add_argument("--g", action="store_true", help="Open GMSH GUI to see the mesh")
-
-
 args = parser.parse_args()
+
+if len(sys.argv) == 1:
+    parser.print_help()
+    sys.exit()
 
 if args.list is True:
     get_all_available_airfoil_names()
@@ -96,8 +99,7 @@ else:
         ext_domain = Circle(0.5, 0, 0, radius=args.farfield, mesh_size=ext_mesh_size)
     elif args.box is not None:
         # create a Box (lenght x height)
-        lenght = float(args.box[: args.box.index("x")])
-        width = float(args.box[args.box.index("x") + 1 :])
+        lenght, width = [float(value) for value in args.box.split("x")]
         ext_domain = Rectangle(0.5, 0, 0, lenght, width, mesh_size=ext_mesh_size)
     else:
         # if no argument is given create a circular farfield by default
@@ -109,7 +111,7 @@ else:
         mesh_size_foil = args.foil_mesh_size
     # 2)Airfoil
     airfoil = AirfoilSpline(cloud_points, mesh_size_foil)
-    airfoil.rotation(aoa, (0, 0, 0), (0, 0, 1))
+    airfoil.rotation(aoa, (0.5, 0, 0), (0, 0, 1))
     airfoil.gen_skin()
 
     # 3)Generate domain
@@ -131,8 +133,6 @@ else:
         format = ".su2"
     else:
         format = args.format
-
-    gmsh.fltk.run()  # _______________________________________________________REMOVE MEEEEEEEEEEEE
 
     gmsh.write("mesh" + format)
     gmsh.finalize()
