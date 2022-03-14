@@ -17,7 +17,7 @@ def get_all_available_airfoil_names():
     _ : list
         return a list containing the same of the available airfoil
     """
-    
+
     url = "https://m-selig.ae.illinois.edu/ads/coord_database.html"
 
     r = requests.get(url)
@@ -32,15 +32,15 @@ def get_all_available_airfoil_names():
 
 def get_airfoil_file(airfoil_name):
     """
-    Request the airfoil .dat file at m-selig.ae.illinois.edu and stores it (if found) in the 
+    Request the airfoil .dat file at m-selig.ae.illinois.edu and stores it (if found) in the
     database folder
-    
+
     Parameters
     ----------
     airfoil_name : srt
         name of the airfoil
     """
-    
+
     if not os.path.exists(database_dir):
         os.makedirs(database_dir)
 
@@ -51,10 +51,10 @@ def get_airfoil_file(airfoil_name):
     if r.status_code != 200:
         raise Exception(f"Could not get airfoil {airfoil_name}")
 
-    file_path = os.path.join(database_dir,f"{airfoil_name}.dat")
+    file_path = os.path.join(database_dir, f"{airfoil_name}.dat")
 
     if not os.path.exists(file_path):
-        
+
         with open(file_path, "wb") as f:
             f.write(r.content)
 
@@ -75,24 +75,24 @@ def NACA_4_digit_geom(NACA_name, nb_points=100):
     _ : int
         return the 3d cloud of points representing the airfoil
     """
-    
+
     theta_line = np.linspace(0, np.pi, nb_points)
     x_line = 0.5 * (1 - np.cos(theta_line))
 
     m = int(NACA_name[0]) / 100
     p = int(NACA_name[1]) / 10
     t = (int(NACA_name[2]) * 10 + int(NACA_name[3])) / 100
-    
+
     # thickness line
     y_t = (
         t
         / 0.2
         * (
-            0.2969 * x_line ** 0.5
+            0.2969 * x_line**0.5
             - 0.126 * x_line
-            - 0.3516 * x_line ** 2
-            + 0.2843 * x_line ** 3
-            + -0.1036 * x_line ** 4
+            - 0.3516 * x_line**2
+            + 0.2843 * x_line**3
+            + -0.1036 * x_line**4
         )
     )
 
@@ -107,22 +107,22 @@ def NACA_4_digit_geom(NACA_name, nb_points=100):
         # total camber line
         y_c = np.concatenate(
             (
-                (m / p ** 2) * (2 * p * x_line_front - x_line_front ** 2),
+                (m / p**2) * (2 * p * x_line_front - x_line_front**2),
                 (m / (1 - p) ** 2)
-                * (1 - 2 * p + 2 * p * x_line_back - x_line_back ** 2),
+                * (1 - 2 * p + 2 * p * x_line_back - x_line_back**2),
             ),
             axis=0,
         )
         dyc_dx = np.concatenate(
             (
-                (2 * m / p ** 2) * (p - x_line_front),
+                (2 * m / p**2) * (p - x_line_front),
                 (2 * m / (1 - p) ** 2) * (p - x_line_back),
             ),
             axis=0,
         )
 
         theta = np.arctan(dyc_dx)
-        
+
         # upper and lower surface
         x_u = x_line - y_t * np.sin(theta)
         y_u = y_c + y_t * np.cos(theta)

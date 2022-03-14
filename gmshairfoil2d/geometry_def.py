@@ -11,9 +11,9 @@ import math
 class Point:
     """
     A class to represent the point geometrical object of gmsh
-    
+
     ...
-    
+
     Attributes
     ----------
     x : float
@@ -39,13 +39,46 @@ class Point:
         # create the gmsh object and store the tag of the geometric object
         self.tag = gmsh.model.occ.addPoint(self.x, self.y, self.z, self.mesh_size)
 
+    def rotation(self, angle, origin, axis):
+        """
+        Methode to rotate the object Point
+        ...
+
+        Parameters
+        ----------
+        angle : float
+            angle of rotation in rad
+        origin : tuple
+            tuple of point (x,y,z) which is the origin of the rotation
+        axis : tuple
+            tuple of point (x,y,z) which represent the axis of rotation
+        """
+        gmsh.model.occ.rotate(
+            [(self.dim, self.tag)],
+            *origin,
+            *axis,
+            angle,
+        )
+
+    def translation(self, vector):
+        """
+        Methode to translate the object Point
+        ...
+
+        Parameters
+        ----------
+        direction : tuple
+            tuple of point (x,y,z) which represent the direction of the translation
+        """
+        gmsh.model.occ.translate([(self.dim, self.tag)], *vector)
+
 
 class Line:
     """
     A class to represent the Line geometrical object of gmsh
-    
+
     ...
-    
+
     Attributes
     ----------
     start_point : Point
@@ -55,7 +88,6 @@ class Line:
     """
 
     def __init__(self, start_point, end_point):
-
         self.start_point = start_point
         self.end_point = end_point
 
@@ -64,13 +96,113 @@ class Line:
         # create the gmsh object and store the tag of the geometric object
         self.tag = gmsh.model.occ.addLine(self.start_point.tag, self.end_point.tag)
 
+    def rotation(self, angle, origin, axis):
+        """
+        Methode to rotate the object Line
+        ...
+
+        Parameters
+        ----------
+        angle : float
+            angle of rotation in rad
+        origin : tuple
+            tuple of point (x,y,z) which is the origin of the rotation
+        axis : tuple
+            tuple of point (x,y,z) which represent the axis of rotation
+        """
+        gmsh.model.occ.rotate(
+            [(self.dim, self.tag)],
+            *origin,
+            *axis,
+            angle,
+        )
+
+    def translation(self, vector):
+        """
+        Methode to translate the object Line
+        ...
+
+        Parameters
+        ----------
+        direction : tuple
+            tuple of point (x,y,z) which represent the direction of the translation
+        """
+        gmsh.model.occ.translate([(self.dim, self.tag)], *vector)
+
+
+class Spline:
+    """
+    A class to represent the Spine geometrical object of gmsh
+
+    ...
+
+    Attributes
+    ----------
+    points_list : list(Point)
+        list of Point object forming the Spline
+    """
+
+    def __init__(self, point_list):
+        self.point_list = point_list
+
+        # generate the Lines tag list to folow
+        self.tag_list = [point.tag for point in self.point_list]
+        self.dim = 1
+        # create the gmsh object and store the tag of the geometric object
+        self.tag = gmsh.model.occ.addSpline(self.tag_list)
+
+    def rotation(self, angle, origin, axis):
+        """
+        Methode to rotate the object Spline
+
+        Rotate the spline itself (curve, starpoint,endpoint), then rotate the indermediate points
+        ...
+
+        Parameters
+        ----------
+        angle : float
+            angle of rotation in rad
+        origin : tuple
+            tuple of point (x,y,z) which is the origin of the rotation
+        axis : tuple
+            tuple of point (x,y,z) which represent the axis of rotation
+        """
+        gmsh.model.occ.rotate(
+            [(self.dim, self.tag)],
+            *origin,
+            *axis,
+            angle,
+        )
+
+        [
+            interm_point.rotation(angle, origin, axis)
+            for interm_point in self.point_list[1:-1]
+        ]
+
+    def translation(self, vector):
+        """
+        Methode to translate the object Line
+
+        Translate the spline itself (curve, starpoint,endpoint), then translate the indermediate points
+        ...
+
+        Parameters
+        ----------
+        direction : tuple
+            tuple of point (x,y,z) which represent the direction of the translation
+        """
+        gmsh.model.occ.translate([(self.dim, self.tag)], *vector)
+        [interm_point.translation(vector) for interm_point in self.point_list[1:-1]]
+
 
 class CurveLoop:
     """
     A class to represent the CurveLoop geometrical object of gmsh
-    
+    Curveloop object are an addition entity of the existing line that forms it
+    Curveloop must be created when the geometry is in its final layout
+
     ...
-    
+
     Attributes
     ----------
     line_list : list(Line)
@@ -80,6 +212,7 @@ class CurveLoop:
     def __init__(self, line_list):
 
         self.line_list = line_list
+        self.dim = 1
 
         # generate the Lines tag list to folow
         self.tag_list = [line.tag for line in self.line_list]
@@ -90,9 +223,9 @@ class CurveLoop:
 class Circle:
     """
     A class to represent a Circle geometrical object, composed of many arcCircle object of gmsh
-    
+
     ...
-    
+
     Attributes
     ----------
     xc : float
@@ -134,8 +267,17 @@ class Circle:
         # Remove the duplicated points generated by the arcCircle
         gmsh.model.occ.synchronize()
         gmsh.model.occ.removeAllDuplicates()
-        # Merge in one CurveLoop
-        self.tag = gmsh.model.occ.addCurveLoop(self.arcCircle_list)
+
+    def close_loop(self):
+        """
+        Method to form a close loop with the current geometrical object
+
+        Returns
+        -------
+        _ : int
+            return the tag of the CurveLoop object
+        """
+        return gmsh.model.occ.addCurveLoop(self.arcCircle_list)
 
     def define_bc(self):
         """
@@ -143,17 +285,56 @@ class Circle:
         for the boundary condition
         -------
         """
-        
+
         self.bc = gmsh.model.addPhysicalGroup(self.dim, self.arcCircle_list)
         self.physical_name = gmsh.model.setPhysicalName(self.dim, self.bc, "farfield")
+
+    def rotation(self, angle, origin, axis):
+        """
+        Methode to rotate the object Circle
+        ...
+
+        Parameters
+        ----------
+        angle : float
+            angle of rotation in rad
+        origin : tuple
+            tuple of point (x,y,z) which is the origin of the rotation
+        axis : tuple
+            tuple of point (x,y,z) which represent the axis of rotation
+        """
+        [
+            gmsh.model.occ.rotate(
+                [(self.dim, arccircle)],
+                *origin,
+                *axis,
+                angle,
+            )
+            for arccircle in self.arcCircle_list
+        ]
+
+    def translation(self, vector):
+        """
+        Methode to translate the object Circle
+        ...
+
+        Parameters
+        ----------
+        direction : tuple
+            tuple of point (x,y,z) which represent the direction of the translation
+        """
+        [
+            gmsh.model.occ.translate([(self.dim, arccircle)], *vector)
+            for arccircle in self.arcCircle_list
+        ]
 
 
 class Rectangle:
     """
     A class to represent a rectangle geometrical object, composed of 4 Lines object of gmsh
-    
+
     ...
-    
+
     Attributes
     ----------
     xc : float
@@ -198,8 +379,16 @@ class Rectangle:
             Line(self.points[3], self.points[0]),
         ]
 
-        # Generate the corresponding curveloop
-        self.tag = CurveLoop(self.lines).tag
+    def close_loop(self):
+        """
+        Method to form a close loop with the current geometrical object
+
+        Returns
+        -------
+        _ : int
+            return the tag of the CurveLoop object
+        """
+        return CurveLoop(self.lines).tag
 
     def define_bc(self):
         """
@@ -224,47 +413,41 @@ class Rectangle:
 
         self.bc = [self.bc_in, self.bc_out, self.bc_wall]
 
-
-class PlaneSurface:
-    """
-    A class to represent the PlaneSurface geometrical object of gmsh
-    
-    ...
-    
-    Attributes
-    ----------
-    curveLoop_list : list(CurveLoop)
-        List of CurveLoop object, the first curve loop defines
-        the exterior contour; additional curve loop
-        define holes in the surface domaine
-
-    """
-
-    def __init__(self, curveLoop_list):
-
-        self.curveLoop_list = curveLoop_list
-        self.tag_list = [curveLoop.tag for curveLoop in self.curveLoop_list]
-
-        self.dim = 2
-
-        # create the gmsh object and store the tag of the geometric object
-        self.tag = gmsh.model.occ.addPlaneSurface(self.tag_list)
-
-    def define_bc(self):
+    def rotation(self, angle, origin, axis):
         """
-        Method that define the domain marker of the surface
-        -------
+        Methode to rotate the object Rectangle
+        ...
+
+        Parameters
+        ----------
+        angle : float
+            angle of rotation in rad
+        origin : tuple
+            tuple of point (x,y,z) which is the origin of the rotation
+        axis : tuple
+            tuple of point (x,y,z) which represent the axis of rotation
         """
-        self.ps = gmsh.model.addPhysicalGroup(self.dim, [self.tag])
-        gmsh.model.setPhysicalName(self.dim, self.ps, "fluid")
+        [line.rotation(angle, origin, axis) for line in self.lines]
+
+    def translation(self, vector):
+        """
+        Methode to translate the object Rectangle
+        ...
+
+        Parameters
+        ----------
+        direction : tuple
+            tuple of point (x,y,z) which represent the direction of the translation
+        """
+        [line.translation(vector) for line in self.lines]
 
 
 class Airfoil:
     """
     A class to represent and airfoil as a CurveLoop object formed with lines
-    
+
     ...
-    
+
     Attributes
     ----------
     point_cloud : list(list(float))
@@ -289,30 +472,73 @@ class Airfoil:
             Point(point_cord[0], point_cord[1], point_cord[2], mesh_size)
             for point_cord in point_cloud
         ]
-        # Generate Lines object from Points
+
+    def gen_skin(self):
+        """
+        Method to generate the line forming the foil, Only call this function when the points
+        of the airfoil are in their final position
+        -------
+        """
         self.lines = [
             Line(self.points[i], self.points[i + 1])
             for i in range(-1, len(self.points) - 1)
         ]
+        self.lines_tag = [line.tag for line in self.lines]
 
-        self.CurveLoop = CurveLoop(self.lines)
-        self.tag = self.CurveLoop.tag
+    def close_loop(self):
+        """
+        Method to form a close loop with the current geometrical object
+
+        Returns
+        -------
+        _ : int
+            return the tag of the CurveLoop object
+        """
+        return CurveLoop(self.lines).tag
 
     def define_bc(self):
         """
         Method that define the marker of the airfoil for the boundary condition
         -------
         """
-        
-        self.bc = gmsh.model.addPhysicalGroup(self.dim, self.CurveLoop.tag_list)
+
+        self.bc = gmsh.model.addPhysicalGroup(self.dim, self.lines_tag)
         gmsh.model.setPhysicalName(self.dim, self.bc, self.name)
+
+    def rotation(self, angle, origin, axis):
+        """
+        Methode to rotate the object CurveLoop
+        ...
+
+        Parameters
+        ----------
+        angle : float
+            angle of rotation in rad
+        origin : tuple
+            tuple of point (x,y,z) which is the origin of the rotation
+        axis : tuple
+            tuple of point (x,y,z) which represent the axis of rotation
+        """
+        [point.rotation(angle, origin, axis) for point in self.points]
+
+    def translation(self, vector):
+        """
+        Methode to translate the object CurveLoop
+        ...
+
+        Parameters
+        ----------
+        direction : tuple
+            tuple of point (x,y,z) which represent the direction of the translation
+        """
+        [point.translation(vector) for point in self.points]
 
 
 class AirfoilSpline:
     """
     A class to represent and airfoil as a CurveLoop object formed with Splines
     ...
-    
+
     Attributes
     ----------
     point_cloud : list(list(float))
@@ -339,60 +565,123 @@ class AirfoilSpline:
             for point_cord in point_cloud
         ]
         # Find leading and trailing edge location
+        # in space
         self.le = min(self.points, key=attrgetter("x"))
         self.te = max(self.points, key=attrgetter("x"))
 
-        self.points_tag = [point.tag for point in self.points]
+        # in the list of point
+        self.le_indx = self.points.index(self.le)
+        self.te_indx = self.points.index(self.te)
 
+    def gen_skin(self):
+        """
+        Method to generate the two splines forming the foil, Only call this function when the points
+        of the airfoil are in their final position
+        -------
+        """
         # Create the Splines depending on the le and te location in point_cloud
-        if self.le.tag < self.te.tag:
+        if self.le_indx < self.te_indx:
             # create a spline from the leading edge to the trailing edge
-            self.upper_spline_tag = gmsh.model.occ.addSpline(
-                self.points_tag[
-                    self.points_tag.index(self.le.tag) : self.points_tag.index(
-                        self.te.tag
-                    )
-                    + 1
-                ]
-            )
+            self.upper_spline = Spline(self.points[self.le_indx : self.te_indx + 1])
             # create a spline from the trailing edge to the leading edge
-            self.lower_spline_tag = gmsh.model.occ.addSpline(
-                self.points_tag[
-                    self.points_tag.index(self.te.tag) : self.points_tag[-1]
-                ]
-                + self.points_tag[0 : self.points_tag.index(self.le.tag) + 1]
+            self.lower_spline = Spline(
+                self.points[self.te_indx :] + self.points[: (self.le_indx) + 1]
             )
 
         else:
-            self.upper_spline_tag = gmsh.model.occ.addSpline(
-                (
-                    self.points_tag[
-                        (self.points_tag).index(self.le.tag) : (self.points_tag[-1])
-                    ]
-                    + self.points_tag[0 : self.points_tag.index(self.te.tag) + 1]
-                )
+            # create a spline from the leading edge to the trailing edge
+            self.upper_spline = Spline(
+                self.points[self.le_indx :] + self.points[: (self.te_indx + 1)]
             )
-            self.lower_spline_tag = gmsh.model.occ.addSpline(
-                self.points_tag[
-                    self.points_tag.index(self.te.tag) : self.points_tag.index(
-                        self.le.tag
-                    )
-                    + 1
-                ]
-            )
+            # create a spline from the trailing edge to the leading edge
+            self.lower_spline = Spline(self.points[self.te_indx : self.le_indx + 1])
 
+        return self.upper_spline, self.lower_spline
         # form the curvedloop
-        self.tag = gmsh.model.occ.addCurveLoop(
-            [self.upper_spline_tag, self.lower_spline_tag]
-        )
+
+    def close_loop(self):
+        """
+        Method to form a close loop with the current geometrical object
+
+        Returns
+        -------
+        _ : int
+            return the tag of the CurveLoop object
+        """
+        return CurveLoop([self.upper_spline, self.lower_spline]).tag
 
     def define_bc(self):
         """
         Method that define the marker of the airfoil for the boundary condition
         -------
         """
-        
+
         self.bc = gmsh.model.addPhysicalGroup(
-            self.dim, [self.upper_spline_tag, self.lower_spline_tag]
+            self.dim, [self.upper_spline.tag, self.lower_spline.tag]
         )
         gmsh.model.setPhysicalName(self.dim, self.bc, self.name)
+
+    def rotation(self, angle, origin, axis):
+        """
+        Methode to rotate the object AirfoilSpline
+        ...
+
+        Parameters
+        ----------
+        angle : float
+            angle of rotation in rad
+        origin : tuple
+            tuple of point (x,y,z) which is the origin of the rotation
+        axis : tuple
+            tuple of point (x,y,z) which represent the axis of rotation
+        """
+        [point.rotation(angle, origin, axis) for point in self.points]
+
+    def translation(self, vector):
+        """
+        Methode to translate the object AirfoilSpline
+        ...
+
+        Parameters
+        ----------
+        direction : tuple
+            tuple of point (x,y,z) which represent the direction of the translation
+        """
+        [point.translation(vector) for point in self.points]
+
+
+class PlaneSurface:
+    """
+    A class to represent the PlaneSurface geometrical object of gmsh
+
+
+    ...
+
+    Attributes
+    ----------
+    geom_objects : list(geom_object)
+        List of geometrical object able to form closedloop,
+        First the object will be closed in ClosedLoop
+        the first curve loop defines the exterior contour; additional curve loop
+        define holes in the surface domaine
+
+    """
+
+    def __init__(self, geom_objects):
+
+        self.geom_objects = geom_objects
+        # close_loop() will form a close loop object and return its tag
+        self.tag_list = [geom_object.close_loop() for geom_object in self.geom_objects]
+
+        self.dim = 2
+
+        # create the gmsh object and store the tag of the geometric object
+        self.tag = gmsh.model.occ.addPlaneSurface(self.tag_list)
+
+    def define_bc(self):
+        """
+        Method that define the domain marker of the surface
+        -------
+        """
+        self.ps = gmsh.model.addPhysicalGroup(self.dim, [self.tag])
+        gmsh.model.setPhysicalName(self.dim, self.ps, "fluid")
