@@ -55,12 +55,8 @@ class Point:
         """
         gmsh.model.occ.rotate(
             [(self.dim, self.tag)],
-            origin[0],
-            origin[1],
-            origin[2],
-            axis[0],
-            axis[1],
-            axis[2],
+            *origin,
+            *axis,
             angle,
         )
 
@@ -74,9 +70,7 @@ class Point:
         direction : tuple
             tuple of point (x,y,z) which represent the direction of the translation
         """
-        gmsh.model.occ.translate(
-            [(self.dim, self.tag)], vector[0], vector[1], vector[2]
-        )
+        gmsh.model.occ.translate([(self.dim, self.tag)], *vector)
 
 
 class Line:
@@ -118,12 +112,8 @@ class Line:
         """
         gmsh.model.occ.rotate(
             [(self.dim, self.tag)],
-            origin[0],
-            origin[1],
-            origin[2],
-            axis[0],
-            axis[1],
-            axis[2],
+            *origin,
+            *axis,
             angle,
         )
 
@@ -137,9 +127,7 @@ class Line:
         direction : tuple
             tuple of point (x,y,z) which represent the direction of the translation
         """
-        gmsh.model.occ.translate(
-            [(self.dim, self.tag)], vector[0], vector[1], vector[2]
-        )
+        gmsh.model.occ.translate([(self.dim, self.tag)], *vector)
 
 
 class Spline:
@@ -181,12 +169,8 @@ class Spline:
         """
         gmsh.model.occ.rotate(
             [(self.dim, self.tag)],
-            origin[0],
-            origin[1],
-            origin[2],
-            axis[0],
-            axis[1],
-            axis[2],
+            *origin,
+            *axis,
             angle,
         )
 
@@ -207,9 +191,7 @@ class Spline:
         direction : tuple
             tuple of point (x,y,z) which represent the direction of the translation
         """
-        gmsh.model.occ.translate(
-            [(self.dim, self.tag)], vector[0], vector[1], vector[2]
-        )
+        gmsh.model.occ.translate([(self.dim, self.tag)], *vector)
         [interm_point.translation(vector) for interm_point in self.point_list[1:-1]]
 
 
@@ -324,12 +306,8 @@ class Circle:
         [
             gmsh.model.occ.rotate(
                 [(self.dim, arccircle)],
-                origin[0],
-                origin[1],
-                origin[2],
-                axis[0],
-                axis[1],
-                axis[2],
+                *origin,
+                *axis,
                 angle,
             )
             for arccircle in self.arcCircle_list
@@ -346,9 +324,7 @@ class Circle:
             tuple of point (x,y,z) which represent the direction of the translation
         """
         [
-            gmsh.model.occ.translate(
-                [(self.dim, arccircle)], vector[0], vector[1], vector[2]
-            )
+            gmsh.model.occ.translate([(self.dim, arccircle)], *vector)
             for arccircle in self.arcCircle_list
         ]
 
