@@ -59,6 +59,70 @@ def get_airfoil_file(airfoil_name):
             f.write(r.content)
 
 
+def get_airfoil_points(airfoil_name):
+
+    airfoil_points = []
+    upper_points = []
+    lower_points = []
+    upper_len = 0
+    lower_len = 0
+    reverse_lower = False
+
+    get_airfoil_file(airfoil_name)
+    airfoil_file = os.path.join(database_dir, airfoil_name + ".dat")
+
+    with open(airfoil_file) as f:
+        lines = f.readlines()
+
+    for line in lines:
+
+        # Catch the text lines
+        try:
+            x, y = map(float, line.strip("\n").split())
+        except ValueError:
+            continue
+
+        # Catch the line with the upper and lower number of points
+        if x > 1 and y > 1:
+            upper_len = int(x)
+            lower_len = int(y)
+            continue
+
+        # Catch the x, y coordinates
+        airfoil_points.append((x, y))
+
+    n_points = len(airfoil_points)
+
+    if not upper_len or not lower_len:
+
+        upper_len = n_points // 2
+
+        for i, (x, y) in enumerate(airfoil_points):
+            if x == y == 0:
+                upper_len = i
+                break
+    else:
+        reverse_lower = True
+
+    upper_points = airfoil_points[:upper_len]
+    lower_points = airfoil_points[upper_len:]
+
+    if reverse_lower:
+        lower_points = lower_points[::-1]
+
+    assert len(upper_points) + len(lower_points) == n_points
+
+    x_up, y_up = zip(*[points for points in upper_points])
+    x_lo, y_lo = zip(*[points for points in lower_points])
+
+    x = [*x_up, *x_lo]
+    y = [*y_up, *y_lo]
+
+    cloud_points = [(x[k], y[k], 0) for k in range(0, len(x))]
+    # remove duplicated points
+    return sorted(set(cloud_points), key=cloud_points.index)
+
+
 def NACA_4_digit_geom(NACA_name, nb_points=100):
     """
     Compute the profile of a NACA 4 digits airfoil

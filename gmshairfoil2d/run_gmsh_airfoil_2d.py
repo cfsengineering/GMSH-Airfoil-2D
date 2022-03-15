@@ -1,5 +1,9 @@
 import argparse
-from airfoil_func import NACA_4_digit_geom, get_all_available_airfoil_names
+from airfoil_func import (
+    NACA_4_digit_geom,
+    get_airfoil_points,
+    get_all_available_airfoil_names,
+)
 from geometry_def import PlaneSurface, Circle, Rectangle, AirfoilSpline
 import gmsh
 import sys
@@ -73,7 +77,7 @@ if args.list is True:
 else:
     # Foil and angle of attack
     if args.naca is None:
-        pass  # to be implemented
+        cloud_points = get_airfoil_points(args.airfoil)
     else:
         # Generate NACA 4 digit profil
         print(args)
