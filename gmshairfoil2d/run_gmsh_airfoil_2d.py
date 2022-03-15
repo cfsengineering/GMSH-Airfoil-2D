@@ -138,8 +138,6 @@ else:
     surface_domain.define_bc()
 
     # Generate mesh
-    #    gmsh.model.mesh.setOrder(1)
-    gmsh.model.mesh.generate(1)
     gmsh.model.mesh.generate(2)
     if args.ui is True:
         gmsh.fltk.run()
