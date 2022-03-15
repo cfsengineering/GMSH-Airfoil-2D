@@ -25,7 +25,10 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--airfoil", type=str, nargs="?", help="Name of an airfoil profile in the database"
+    "--airfoil",
+    type=str,
+    nargs="?",
+    help="Name of an airfoil profile in the database (database available with the --list argument)",
 )
 
 parser.add_argument("--aoa", type=float, nargs="?", help="Angle of attack in deg")
@@ -63,8 +66,15 @@ parser.add_argument(
     help="format of the mesh file ex: .su2",
 )
 
+parser.add_argument(
+    "--o",
+    type=str,
+    nargs="?",
+    help="output path for the mesh file ex : home/myfolde/",
+)
+
 # Switch GUI
-parser.add_argument("--g", action="store_true", help="Open GMSH GUI to see the mesh")
+parser.add_argument("--ui", action="store_true", help="Open GMSH GUI to see the mesh")
 args = parser.parse_args()
 
 if len(sys.argv) == 1:
@@ -128,15 +138,22 @@ else:
     surface_domain.define_bc()
 
     # Generate mesh
+    #    gmsh.model.mesh.setOrder(1)
+    gmsh.model.mesh.generate(1)
     gmsh.model.mesh.generate(2)
-
-    if args.g is True:
+    if args.ui is True:
         gmsh.fltk.run()
 
+    # mesh file name and output
     if args.format is None:
         format = ".su2"
     else:
         format = args.format
 
-    gmsh.write("mesh" + format)
+    if args.o is None:
+        path_file = ""
+    else:
+        path_file = args.o
+
+    gmsh.write(path_file + "mesh" + format)
     gmsh.finalize()
