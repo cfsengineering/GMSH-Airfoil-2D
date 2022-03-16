@@ -1,2 +1,9 @@
 temp.py
-mesh.su2
+*.su2
+*.vtk
+*.msh
+*.vtk
+*.wrl
+*.stl
+*.mesh
+*.cgns
