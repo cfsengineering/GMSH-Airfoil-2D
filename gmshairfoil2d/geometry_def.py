@@ -558,12 +558,16 @@ class AirfoilSpline:
 
         self.name = name
         self.dim = 1
+        self.mesh_size = mesh_size
 
         # Generate Points object from the point_cloud
         self.points = [
-            Point(point_cord[0], point_cord[1], point_cord[2], mesh_size)
+            Point(point_cord[0], point_cord[1], point_cord[2], self.mesh_size)
             for point_cord in point_cloud
         ]
+
+        self.points_dim_tags = [(point.dim, point.tag) for point in self.points]
+
         # Find leading and trailing edge location
         # in space
         self.le = min(self.points, key=attrgetter("x"))
@@ -573,29 +577,32 @@ class AirfoilSpline:
         self.le_indx = self.points.index(self.le)
         self.te_indx = self.points.index(self.te)
 
-    def gen_skin(self):
+        self.spline_gen = False
+
+    def gen_spline(self):
         """
         Method to generate the two splines forming the foil, Only call this function when the points
         of the airfoil are in their final position
         -------
         """
-        # Create the Splines depending on the le and te location in point_cloud
-        if self.le_indx < self.te_indx:
-            # create a spline from the leading edge to the trailing edge
-            self.upper_spline = Spline(self.points[self.le_indx : self.te_indx + 1])
-            # create a spline from the trailing edge to the leading edge
-            self.lower_spline = Spline(
-                self.points[self.te_indx :] + self.points[: (self.le_indx) + 1]
-            )
+        if not self.spline_gen:
+            # Create the Splines depending on the le and te location in point_cloud
+            if self.le_indx < self.te_indx:
+                # create a spline from the leading edge to the trailing edge
+                self.upper_spline = Spline(self.points[self.le_indx : self.te_indx + 1])
+                # create a spline from the trailing edge to the leading edge
+                self.lower_spline = Spline(
+                    self.points[self.te_indx :] + self.points[: (self.le_indx) + 1]
+                )
 
-        else:
-            # create a spline from the leading edge to the trailing edge
-            self.upper_spline = Spline(
-                self.points[self.le_indx :] + self.points[: (self.te_indx + 1)]
-            )
-            # create a spline from the trailing edge to the leading edge
-            self.lower_spline = Spline(self.points[self.te_indx : self.le_indx + 1])
-
+            else:
+                # create a spline from the leading edge to the trailing edge
+                self.upper_spline = Spline(
+                    self.points[self.le_indx :] + self.points[: (self.te_indx + 1)]
+                )
+                # create a spline from the trailing edge to the leading edge
+                self.lower_spline = Spline(self.points[self.te_indx : self.le_indx + 1])
+            self.spline_gen = True
         return self.upper_spline, self.lower_spline
         # form the curvedloop
 
@@ -636,6 +643,8 @@ class AirfoilSpline:
             tuple of point (x,y,z) which represent the axis of rotation
         """
         [point.rotation(angle, origin, axis) for point in self.points]
+        # uppdate
+        update_points(self.points)
 
     def translation(self, vector):
         """
@@ -648,6 +657,85 @@ class AirfoilSpline:
             tuple of point (x,y,z) which represent the direction of the translation
         """
         [point.translation(vector) for point in self.points]
+        # uppdate
+        update_points(self.points)
+
+    def get_center(self):
+        """
+        Methode to find the center of the airfoil
+        ...
+        """
+        gmsh.model.occ.synchronize()
+        (x, y, z) = zip(*[(point.x, point.y, point.z) for point in self.points])
+        nb_pts = len(self.points)
+        return (sum(x) / nb_pts, sum(y) / nb_pts, sum(z) / nb_pts)
+
+    def Generate_skin_layer(self, layer_height, distribution):
+        """
+        A methode to generate a skin layer arroud an airfoil object
+
+        ...
+
+        Arguments
+        ----------
+        airfoil : Airfoil or AirfoilSpline object
+            Airfoil on which the generation of skin layer is performed
+            only work in 2D
+
+        """
+        # first copy the airfoil
+        center = self.get_center()
+        gmsh.model.occ.synchronize()
+        shift_pos = self.points[1:] + self.points[:1]
+        shift_neg = self.points[-1:] + self.points[:-1]
+        skin_points = []
+        for k in range(0, len(self.points)):
+            x_bef, y_bef, _, _, _, _ = gmsh.model.getBoundingBox(0, shift_neg[k].tag)
+            x, y, _, _, _, _ = gmsh.model.getBoundingBox(0, self.points[k].tag)
+            x_aft, y_aft, _, _, _, _ = gmsh.model.getBoundingBox(0, shift_pos[k].tag)
+            tan_vec = [x_aft - x_bef, y_aft - y_bef]
+            norm_vec = [
+                -tan_vec[1] / ((tan_vec[0] ** 2 + tan_vec[1] ** 2) ** 0.5),
+                tan_vec[0] / ((tan_vec[0] ** 2 + tan_vec[1] ** 2) ** 0.5),
+            ]
+            ext_x = x + layer_height * norm_vec[0]
+            ext_y = y + layer_height * norm_vec[1]
+
+            skin_points.append((ext_x, ext_y, 0))
+        self.skin = AirfoilSpline(skin_points, self.mesh_size)
+        if not self.spline_gen:
+            self.gen_spline()
+        self.skin.gen_spline()
+        self.layer_lines = [
+            Line(self.points[k], self.skin.points[k])
+            for k in range(0, len(self.points))
+        ]
+        gmsh.model.occ.synchronize()
+        [
+            gmsh.model.mesh.setTransfiniteCurve(
+                line.tag, distribution[0], meshType="Progression", coef=1.0
+            )
+            for line in self.layer_lines
+        ]
+        gmsh.model.mesh.setTransfiniteCurve(
+            self.lower_spline.tag, distribution[1], meshType="Progression", coef=1.0
+        )
+        gmsh.model.mesh.setTransfiniteCurve(
+            self.upper_spline.tag, distribution[1], meshType="Progression", coef=1.0
+        )
+        gmsh.model.mesh.setTransfiniteCurve(
+            self.skin.lower_spline.tag,
+            distribution[1],
+            meshType="Progression",
+            coef=1.0,
+        )
+        gmsh.model.mesh.setTransfiniteCurve(
+            self.skin.upper_spline.tag,
+            distribution[1],
+            meshType="Progression",
+            coef=1.0,
+        )
+        gmsh.model.occ.synchronize()
 
 
 class PlaneSurface:
@@ -685,3 +773,17 @@ class PlaneSurface:
         """
         self.ps = gmsh.model.addPhysicalGroup(self.dim, [self.tag])
         gmsh.model.setPhysicalName(self.dim, self.ps, "fluid")
+
+
+def update_points(points):
+    """
+    A methode to update point position
+
+    ...
+    """
+    gmsh.model.occ.synchronize()
+    for point in points:
+        point.x, point.y, point.z, _, _, _ = gmsh.model.getBoundingBox(
+            point.dim, point.tag
+        )
+    gmsh.model.occ.synchronize()
