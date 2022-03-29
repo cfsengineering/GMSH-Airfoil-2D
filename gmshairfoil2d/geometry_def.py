@@ -683,40 +683,49 @@ class AirfoilSpline:
             only work in 2D
 
         """
-        # first copy the airfoil
         center = self.get_center()
         gmsh.model.occ.synchronize()
+        # arrays of points shifted by +1 and -1
         shift_pos = self.points[1:] + self.points[:1]
         shift_neg = self.points[-1:] + self.points[:-1]
+        # new points forming the skin
         skin_points = []
         for k in range(0, len(self.points)):
+            # find position of the point p-1,p and p+1
             x_bef, y_bef, _, _, _, _ = gmsh.model.getBoundingBox(0, shift_neg[k].tag)
             x, y, _, _, _, _ = gmsh.model.getBoundingBox(0, self.points[k].tag)
             x_aft, y_aft, _, _, _, _ = gmsh.model.getBoundingBox(0, shift_pos[k].tag)
+
+            # find the tangential vector and the normal vector of the point p
             tan_vec = [x_aft - x_bef, y_aft - y_bef]
             norm_vec = [
                 -tan_vec[1] / ((tan_vec[0] ** 2 + tan_vec[1] ** 2) ** 0.5),
                 tan_vec[0] / ((tan_vec[0] ** 2 + tan_vec[1] ** 2) ** 0.5),
             ]
+            # find the new point on the skin at distance layer_height of the airfoil
             ext_x = x + layer_height * norm_vec[0]
             ext_y = y + layer_height * norm_vec[1]
 
             skin_points.append((ext_x, ext_y, 0))
+        # generate a new airfoil with the skin
         self.skin = AirfoilSpline(skin_points, self.mesh_size)
         if not self.spline_gen:
             self.gen_spline()
         self.skin.gen_spline()
+        # generate lines between each point of the airfoil and its skin
         self.layer_lines = [
             Line(self.points[k], self.skin.points[k])
             for k in range(0, len(self.points))
         ]
         gmsh.model.occ.synchronize()
+        # set the transfinit distribution away from the airfoil
         [
             gmsh.model.mesh.setTransfiniteCurve(
                 line.tag, distribution[0], meshType="Progression", coef=1.0
             )
             for line in self.layer_lines
         ]
+        # set the trandinit distribution along the airfoil
         gmsh.model.mesh.setTransfiniteCurve(
             self.lower_spline.tag, distribution[1], meshType="Progression", coef=1.0
         )
@@ -735,6 +744,9 @@ class AirfoilSpline:
             meshType="Progression",
             coef=1.0,
         )
+        # defin each sub_surface between the airfoil and the skin
+        for line in self.layer_lines:
+            print(line.tag)
         gmsh.model.occ.synchronize()
 
 
