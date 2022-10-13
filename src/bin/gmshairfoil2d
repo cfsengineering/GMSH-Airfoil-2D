@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import argparse
 import math
 import sys
@@ -5,12 +8,12 @@ import os
 
 import gmsh
 
-from airfoil_func import (
+from gmshairfoil2d.airfoil_func import (
     NACA_4_digit_geom,
     get_airfoil_points,
     get_all_available_airfoil_names,
 )
-from geometry_def import AirfoilSpline, Circle, PlaneSurface, Rectangle
+from gmshairfoil2d.geometry_def import AirfoilSpline, Circle, PlaneSurface, Rectangle
 
 # Instantiate the parser
 parser = argparse.ArgumentParser(

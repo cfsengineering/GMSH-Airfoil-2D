@@ -25,7 +25,7 @@ pip install -e .
 ## Usage
 
 ```text
-python run_gmsh_airfoil_2d.py -h                                    
+gmshairfoil2d -h                                    
 
 optional arguments:
   -h, --help                  show this help message and exit
@@ -51,7 +51,7 @@ optional arguments:
 To check all airfoil available in the [database](https://m-selig.ae.illinois.edu/ads/coord_database.html):
 
 ```bash
-python run_gmsh_airfoil_2d.py --list
+gmshairfoil2d --list
 ```
 
 For all the following examples, the defauld chord lenght is 1 meter.
@@ -59,7 +59,7 @@ For all the following examples, the defauld chord lenght is 1 meter.
 To create a circular farfield mesh around a NACA0012 of 10m of radius and see the result with GMSH user interface:
 
 ```bash
-python run_gmsh_airfoil_2d.py --naca 0012 --farfield 10 --ui
+gmshairfoil2d --naca 0012 --farfield 10 --ui
 ```
 
 ![GMSH user interface with the 2D mesh](images/example_mesh.png)
@@ -67,13 +67,13 @@ python run_gmsh_airfoil_2d.py --naca 0012 --farfield 10 --ui
 To create a circular farfield mesh around a Drela DAE11 airfoil (the name in the database is "dae11") of 20m or radius with a mesh size of 0.005m on the airfoil:
 
 ```bash
-python run_gmsh_airfoil_2d.py --airfoil dae11 --farfield 20 --airfoil_mesh_size 0.005
+gmshairfoil2d --airfoil dae11 --farfield 20 --airfoil_mesh_size 0.005
 ```
 
 To create mesh around a Eppler E220 airfoil (the name in the database is "e211") with an angle of attack of 8 degree in a box of 12x4m (lenght x hight) and save it as a vtk mesh and see the result with GMSH user interface:
 
 ```bash
-python run_gmsh_airfoil_2d.py --airfoil e211 --aoa 8 --box 12x4 --format vtk --ui
+gmshairfoil2d --airfoil e211 --aoa 8 --box 12x4 --format vtk --ui
 ```
 
 ![GMSH user interface with the 2D mesh, rectangular box](images/example_mesh_box.png)
