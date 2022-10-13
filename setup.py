@@ -39,7 +39,7 @@ setuptools.setup(
     python_requires=REQUIRES_PYTHON,
     scripts=SCRIPTS,
     entry_points = {
-        "console_scripts": ['gmshairfoil2d = gmshairfoil2d:main']
+        "console_scripts": ['gmshairfoil2d = src.bin.gmshairfoil2d:main']
         },
     keywords=["airfoil", "2D", "mesh", "cfd", "gmsh"],
     install_requires=REQUIRED,
