@@ -2,7 +2,7 @@ from pathlib import Path
 import setuptools
 
 NAME = "gmshairfoil2d"
-VERSION = "0.1.1"
+VERSION = "0.1.2"
 AUTHOR = "Aidan Jungo"
 EMAIL = "aidan.jungo@cfse.ch"
 DESCRIPTION = "Python tool to genreate 2D mesh around an airfoil"
@@ -38,6 +38,9 @@ setuptools.setup(
     packages=[NAME],
     python_requires=REQUIRES_PYTHON,
     scripts=SCRIPTS,
+    entry_points = {
+        "console_scripts": ['gmshairfoil2d = src.bin.gmshairfoil2d:main']
+        },
     keywords=["airfoil", "2D", "mesh", "cfd", "gmsh"],
     install_requires=REQUIRED,
     # See: https://pypi.org/classifiers/
