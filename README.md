@@ -1,5 +1,5 @@
-[![PyPi version](https://img.shields.io/pypi/v/gmsh-airfoil-2d.svg)](https://pypi.python.org/pypi/gmsh-airfoil-2d)
-[![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://github.com/aidanjungo/GMSH-AIRFOIL-2D/blob/main/LICENSE)
+[![PyPi version](https://img.shields.io/pypi/v/gmshairfoil2d.svg)](https://pypi.python.org/pypi/gmshairfoil2d)
+[![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://github.com/cfsengineering/GMSH-Airfoil-2D/blob/main/LICENSE)
 [![Black code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 # GMSH-Airfoil-2D
@@ -11,7 +11,7 @@ Python tool to genreate 2D unstructured mesh around an airfoil with [GMSH](https
 You can install this package from PyPi:
 
 ```bash
-pip install gmsh-airfoil-2d
+pip install gmshairfoil2d
 ```
 
 Or you can clone and install this repository with the following commands:
