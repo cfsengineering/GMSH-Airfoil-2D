@@ -15,6 +15,10 @@ jobs:
       max-parallel: 5
 
     steps:
+
+    - name: Install missing lib
+      run: apt-get install libgl1-mesa-glx
+
     - uses: actions/checkout@v2
     - name: Set up Python 3.10.7
       uses: actions/setup-python@v2
@@ -27,4 +31,4 @@ jobs:
 
     - name: Run pytest
       shell: bash -l {0}
-      run: pytest -v
+      run: pytest -v .
