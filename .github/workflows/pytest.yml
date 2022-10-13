@@ -25,10 +25,6 @@ jobs:
       shell: bash -l {0}
       run: pip install -e .
 
-    - name: Run flake8
-      shell: bash -l {0}
-      run: flake8
-
     - name: Run pytest
       shell: bash -l {0}
       run: pytest -v
