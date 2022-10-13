@@ -1,6 +1,5 @@
 from pathlib import Path
 import setuptools
-import os
 
 NAME = "gmshairfoil2d"
 VERSION = "0.1.1"
@@ -15,7 +14,7 @@ thelibFolder = Path(__file__).parent
 requirementPath = Path(thelibFolder, "requirement.txt")
 
 REQUIRED = []
-if os.path.isfile(requirementPath):
+if requirementPath.is_file():
     with open(requirementPath) as f:
         REQUIRED = f.read().splitlines()
 

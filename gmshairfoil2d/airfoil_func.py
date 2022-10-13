@@ -1,11 +1,12 @@
-import requests
-import os
+from pathlib import Path
+
 import numpy as np
+import requests
 
 import gmshairfoil2d.__init__
 
-LIB_DIR = os.path.dirname(gmshairfoil2d.__init__.__file__)
-database_dir = os.path.join(LIB_DIR, os.path.dirname(LIB_DIR), "database")
+LIB_DIR = Path(gmshairfoil2d.__init__.__file__).parents[1]
+database_dir = Path(LIB_DIR, "database")
 
 
 def get_all_available_airfoil_names():
@@ -41,8 +42,8 @@ def get_airfoil_file(airfoil_name):
         name of the airfoil
     """
 
-    if not os.path.exists(database_dir):
-        os.makedirs(database_dir)
+    if not database_dir.exists():
+        database_dir.mkdir()
 
     url = f"https://m-selig.ae.illinois.edu/ads/coord/{airfoil_name}.dat"
 
@@ -51,10 +52,9 @@ def get_airfoil_file(airfoil_name):
     if r.status_code != 200:
         raise Exception(f"Could not get airfoil {airfoil_name}")
 
-    file_path = os.path.join(database_dir, f"{airfoil_name}.dat")
+    file_path = Path(database_dir, f"{airfoil_name}.dat")
 
-    if not os.path.exists(file_path):
-
+    if not file_path.exists():
         with open(file_path, "wb") as f:
             f.write(r.content)
 
@@ -69,7 +69,7 @@ def get_airfoil_points(airfoil_name):
     reverse_lower = False
 
     get_airfoil_file(airfoil_name)
-    airfoil_file = os.path.join(database_dir, airfoil_name + ".dat")
+    airfoil_file = Path(database_dir, airfoil_name + ".dat")
 
     with open(airfoil_file) as f:
         lines = f.readlines()
