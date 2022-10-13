@@ -4,15 +4,13 @@
 import argparse
 import math
 import sys
+from pathlib import Path
 
 import gmsh
-
-from gmshairfoil2d.airfoil_func import (
-    NACA_4_digit_geom,
-    get_airfoil_points,
-    get_all_available_airfoil_names,
-)
-from gmshairfoil2d.geometry_def import AirfoilSpline, Circle, PlaneSurface, Rectangle
+from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_points,
+                                        get_all_available_airfoil_names)
+from gmshairfoil2d.geometry_def import (AirfoilSpline, Circle, PlaneSurface,
+                                        Rectangle)
 
 # Instantiate the parser
 parser = argparse.ArgumentParser(
@@ -168,6 +166,6 @@ if args.ui:
     gmsh.fltk.run()
 
 # Mesh file name and output
-mesh_path = os.path.join(args.output, f"mesh_airfoil_{airfoil_name}.{args.format}")
-gmsh.write(mesh_path)
+mesh_path = Path(args.output, f"mesh_airfoil_{airfoil_name}.{args.format}")
+gmsh.write(str(mesh_path))
 gmsh.finalize()
