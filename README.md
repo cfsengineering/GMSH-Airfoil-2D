@@ -1,11 +1,20 @@
+[![PyPi version](https://img.shields.io/pypi/v/gmsh-airfoil-2d.svg)](https://pypi.python.org/pypi/gmsh-airfoil-2d)
+[![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://github.com/aidanjungo/GMSH-AIRFOIL-2D/blob/main/LICENSE)
+[![Black code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 # GMSH-Airfoil-2D
 
 Python tool to genreate 2D unstructured mesh around an airfoil with [GMSH](https://gmsh.info/) in one command line.
 
-
 ## Installation
 
-You can clone and install this repository with the following commands:
+You can install this package from PyPi:
+
+```bash
+pip install gmsh-airfoil-2d
+```
+
+Or you can clone and install this repository with the following commands:
 
 ```bash
 git clone https://github.com/cfsengineering/GMSH-Airfoil-2D.git
@@ -37,8 +46,7 @@ optional arguments:
 
 ```
 
-
-## Examples of use:
+## Examples of use
 
 To check all airfoil available in the [database](https://m-selig.ae.illinois.edu/ads/coord_database.html):
 
@@ -55,7 +63,6 @@ python run_gmsh_airfoil_2d.py --naca 0012 --farfield 10 --ui
 ```
 
 ![GMSH user interface with the 2D mesh](images/example_mesh.png)
-
 
 To create a circular farfield mesh around a Drela DAE11 airfoil (the name in the database is "dae11") of 20m or radius with a mesh size of 0.005m on the airfoil:
 
