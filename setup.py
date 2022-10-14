@@ -2,7 +2,7 @@ from pathlib import Path
 import setuptools
 
 NAME = "gmshairfoil2d"
-VERSION = "0.1.1"
+VERSION = "0.1.3"
 AUTHOR = "Aidan Jungo"
 EMAIL = "aidan.jungo@cfse.ch"
 DESCRIPTION = "Python tool to genreate 2D mesh around an airfoil"
@@ -10,18 +10,17 @@ LONG_DESCRIPTION = open("README.md").read()
 URL = "https://github.com/cfsengineering/GMSH-Airfoil-2D"
 REQUIRES_PYTHON = ">=3.6.0"
 
-thelibFolder = Path(__file__).parent
-requirementPath = Path(thelibFolder, "requirement.txt")
+lib_dir = Path(__file__).parent
+requirement_path = Path(lib_dir, "requirement.txt")
 
 REQUIRED = []
-if requirementPath.is_file():
-    with open(requirementPath) as f:
+if requirement_path.is_file():
+    with open(requirement_path) as f:
         REQUIRED = f.read().splitlines()
 
 README = "README.md"
 PACKAGE_DIR = "."
 LICENSE = "Apache License 2.0"
-SCRIPTS = [str(Path("src/bin/gmshairfoil2d"))]
 
 setuptools.setup(
     name=NAME,
@@ -37,7 +36,9 @@ setuptools.setup(
     license=LICENSE,
     packages=[NAME],
     python_requires=REQUIRES_PYTHON,
-    scripts=SCRIPTS,
+    entry_points = {
+        "console_scripts": ['gmshairfoil2d = gmshairfoil2d.gmshairfoil2d:main']
+        },
     keywords=["airfoil", "2D", "mesh", "cfd", "gmsh"],
     install_requires=REQUIRED,
     # See: https://pypi.org/classifiers/
