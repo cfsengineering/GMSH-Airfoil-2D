@@ -34,4 +34,6 @@ jobs:
       run: pytest -v .
 
     - name: Run gmshairfoil2d
-      run: gmshairfoil2d --airfoil e211 --aoa 8 --box 12x4 --format vtk
+      run: |
+        gmshairfoil2d --airfoil e211 --aoa 8 --box 12x4 --format vtk
+        ls
