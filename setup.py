@@ -37,7 +37,7 @@ setuptools.setup(
     license=LICENSE,
     packages=[NAME],
     python_requires=REQUIRES_PYTHON,
-    scripts=SCRIPTS,
+    # scripts=SCRIPTS,
     entry_points = {
         "console_scripts": ['gmshairfoil2d = gmshairfoil2d:main']
         },
