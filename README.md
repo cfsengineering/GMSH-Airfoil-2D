@@ -1,3 +1,4 @@
+[![Pytest](https://github.com/cfsengineering/GMSH-Airfoil-2D/actions/workflows/pytest.yml/badge.svg?branch=main)](https://github.com/cfsengineering/GMSH-Airfoil-2D/actions/workflows/pytest.yml)
 [![PyPi version](https://img.shields.io/pypi/v/gmshairfoil2d.svg)](https://pypi.python.org/pypi/gmshairfoil2d)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://github.com/cfsengineering/GMSH-Airfoil-2D/blob/main/LICENSE)
 [![Black code style](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
