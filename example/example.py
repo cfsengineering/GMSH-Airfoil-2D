@@ -1,5 +1,5 @@
-from airfoil_func import NACA_4_digit_geom
-from geometry_def import PlaneSurface, Circle, AirfoilSpline
+from gmshairfoil2d.airfoil_func import NACA_4_digit_geom
+from gmshairfoil2d.geometry_def import PlaneSurface, Circle, AirfoilSpline
 import gmsh
 
 # Open gmsh GUI

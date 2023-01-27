@@ -7,9 +7,9 @@ import sys
 from pathlib import Path
 
 import gmsh
-from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_points,
+from airfoil_func import (NACA_4_digit_geom, get_airfoil_points,
                                         get_all_available_airfoil_names)
-from gmshairfoil2d.geometry_def import (AirfoilSpline, Circle, PlaneSurface,
+from geometry_def import (AirfoilSpline, Circle, PlaneSurface,
                                         Rectangle)
 
 def main():
