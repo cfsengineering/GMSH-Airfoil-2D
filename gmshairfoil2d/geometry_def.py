@@ -37,11 +37,12 @@ class Point:
         self.dim = 0
 
         # create the gmsh object and store the tag of the geometric object
-        self.tag = gmsh.model.occ.addPoint(self.x, self.y, self.z, self.mesh_size)
+        self.tag = gmsh.model.geo.addPoint(
+            self.x, self.y, self.z, self.mesh_size)
 
     def rotation(self, angle, origin, axis):
         """
-        Methode to rotate the object Point
+        Method to rotate the object Point
         ...
 
         Parameters
@@ -53,7 +54,7 @@ class Point:
         axis : tuple
             tuple of point (x,y,z) which represent the axis of rotation
         """
-        gmsh.model.occ.rotate(
+        gmsh.model.geo.rotate(
             [(self.dim, self.tag)],
             *origin,
             *axis,
@@ -62,7 +63,7 @@ class Point:
 
     def translation(self, vector):
         """
-        Methode to translate the object Point
+        Method to translate the object Point
         ...
 
         Parameters
@@ -70,7 +71,7 @@ class Point:
         direction : tuple
             tuple of point (x,y,z) which represent the direction of the translation
         """
-        gmsh.model.occ.translate([(self.dim, self.tag)], *vector)
+        gmsh.model.geo.translate([(self.dim, self.tag)], *vector)
 
 
 class Line:
@@ -94,11 +95,12 @@ class Line:
         self.dim = 1
 
         # create the gmsh object and store the tag of the geometric object
-        self.tag = gmsh.model.occ.addLine(self.start_point.tag, self.end_point.tag)
+        self.tag = gmsh.model.geo.addLine(
+            self.start_point.tag, self.end_point.tag)
 
     def rotation(self, angle, origin, axis):
         """
-        Methode to rotate the object Line
+        Method to rotate the object Line
         ...
 
         Parameters
@@ -110,7 +112,7 @@ class Line:
         axis : tuple
             tuple of point (x,y,z) which represent the axis of rotation
         """
-        gmsh.model.occ.rotate(
+        gmsh.model.geo.rotate(
             [(self.dim, self.tag)],
             *origin,
             *axis,
@@ -119,7 +121,7 @@ class Line:
 
     def translation(self, vector):
         """
-        Methode to translate the object Line
+        Method to translate the object Line
         ...
 
         Parameters
@@ -127,7 +129,7 @@ class Line:
         direction : tuple
             tuple of point (x,y,z) which represent the direction of the translation
         """
-        gmsh.model.occ.translate([(self.dim, self.tag)], *vector)
+        gmsh.model.geo.translate([(self.dim, self.tag)], *vector)
 
 
 class Spline:
@@ -145,17 +147,17 @@ class Spline:
     def __init__(self, point_list):
         self.point_list = point_list
 
-        # generate the Lines tag list to folow
+        # generate the Lines tag list to follow
         self.tag_list = [point.tag for point in self.point_list]
         self.dim = 1
         # create the gmsh object and store the tag of the geometric object
-        self.tag = gmsh.model.occ.addSpline(self.tag_list)
+        self.tag = gmsh.model.geo.addSpline(self.tag_list)
 
     def rotation(self, angle, origin, axis):
         """
-        Methode to rotate the object Spline
+        Method to rotate the object Spline
 
-        Rotate the spline itself (curve, starpoint,endpoint), then rotate the indermediate points
+        Rotate the spline itself (curve, startpoint,endpoint), then rotate the intermediate points
         ...
 
         Parameters
@@ -167,7 +169,7 @@ class Spline:
         axis : tuple
             tuple of point (x,y,z) which represent the axis of rotation
         """
-        gmsh.model.occ.rotate(
+        gmsh.model.geo.rotate(
             [(self.dim, self.tag)],
             *origin,
             *axis,
@@ -191,8 +193,9 @@ class Spline:
         direction : tuple
             tuple of point (x,y,z) which represent the direction of the translation
         """
-        gmsh.model.occ.translate([(self.dim, self.tag)], *vector)
-        [interm_point.translation(vector) for interm_point in self.point_list[1:-1]]
+        gmsh.model.geo.translate([(self.dim, self.tag)], *vector)
+        [interm_point.translation(vector)
+         for interm_point in self.point_list[1:-1]]
 
 
 class CurveLoop:
@@ -207,17 +210,43 @@ class CurveLoop:
     ----------
     line_list : list(Line)
         List of Line object, in the order of the wanted CurveLoop and closed
+        Possibility to give either the tags directly, or the object Line
     """
 
     def __init__(self, line_list):
 
         self.line_list = line_list
         self.dim = 1
-
-        # generate the Lines tag list to folow
-        self.tag_list = [line.tag for line in self.line_list]
+        # generate the Lines tag list to follow
+        # first we check if given the tags directly (and not the object Line)
+        if len(line_list) == 0 or isinstance(line_list[0], int):
+            self.tag_list = line_list
+        else:
+            self.tag_list = [line.tag for line in self.line_list]
         # create the gmsh object and store the tag of the geometric object
-        self.tag = gmsh.model.occ.addCurveLoop(self.tag_list)
+        self.tag = gmsh.model.geo.addCurveLoop(self.tag_list)
+
+    def close_loop(self):
+        """
+        Method to form a close loop with the current geometrical object. In our case, we already have it so just return the tag
+
+        Returns
+        -------
+        _ : int
+            return the tag of the CurveLoop object
+        """
+        return self.tag
+
+    def define_bc(self):
+        """
+        Method that define the marker of the CurveLoop (when used as boundary layer boundary)
+        for the boundary condition
+        -------
+        """
+
+        self.bc = gmsh.model.addPhysicalGroup(self.dim, [self.tag])
+        self.physical_name = gmsh.model.setPhysicalName(
+            self.dim, self.bc, "top of boundary layer")
 
 
 class Circle:
@@ -251,22 +280,34 @@ class Circle:
         self.mesh_size = mesh_size
         self.dim = 1
 
-        # create a structured arcCricle to merge in one curveloop
-        self.distribution = math.floor((np.pi * 2 * self.radius) / self.mesh_size)
+        # create a structured arcCircle to merge in one curveloop
+        # first compute how many points on the circle
+        self.distribution = math.floor(
+            (np.pi * 2 * self.radius) / self.mesh_size)
+        realmeshsize = (np.pi * 2 * self.radius)/self.distribution
+        # don't need the meshsize on the center one, so whatever
+        center = Point(self.xc, self.yc, self.zc, realmeshsize)
+        # create all the points for the circle
+        points = []
+        for i in range(0, self.distribution):
+            angle = 2 * np.pi / self.distribution * i
+            p = Point(self.xc+self.radius*math.cos(angle), self.yc+self.radius *
+                      math.sin(angle), self.zc, realmeshsize)
+            points.append(p)
+        points.append(points[0])
+        print(self.distribution, (np.pi * 2 * self.radius)/self.distribution)
+        # create arcs between two neighbouring points to create circle
         self.arcCircle_list = [
-            gmsh.model.occ.addCircle(
-                self.xc,
-                self.yc,
-                self.zc,
-                self.radius,
-                angle1=2 * np.pi / self.distribution * i,
-                angle2=2 * np.pi / self.distribution * (1 + i),
+            gmsh.model.geo.addCircleArc(
+                points[i].tag,
+                center.tag,
+                points[i+1].tag,
             )
             for i in range(0, self.distribution)
         ]
         # Remove the duplicated points generated by the arcCircle
-        gmsh.model.occ.synchronize()
-        gmsh.model.occ.removeAllDuplicates()
+        gmsh.model.geo.synchronize()
+        gmsh.model.geo.removeAllDuplicates()
 
     def close_loop(self):
         """
@@ -277,7 +318,7 @@ class Circle:
         _ : int
             return the tag of the CurveLoop object
         """
-        return gmsh.model.occ.addCurveLoop(self.arcCircle_list)
+        return gmsh.model.geo.addCurveLoop(self.arcCircle_list)
 
     def define_bc(self):
         """
@@ -287,11 +328,12 @@ class Circle:
         """
 
         self.bc = gmsh.model.addPhysicalGroup(self.dim, self.arcCircle_list)
-        self.physical_name = gmsh.model.setPhysicalName(self.dim, self.bc, "farfield")
+        self.physical_name = gmsh.model.setPhysicalName(
+            self.dim, self.bc, "farfield")
 
     def rotation(self, angle, origin, axis):
         """
-        Methode to rotate the object Circle
+        Method to rotate the object Circle
         ...
 
         Parameters
@@ -304,7 +346,7 @@ class Circle:
             tuple of point (x,y,z) which represent the axis of rotation
         """
         [
-            gmsh.model.occ.rotate(
+            gmsh.model.geo.rotate(
                 [(self.dim, arccircle)],
                 *origin,
                 *axis,
@@ -315,7 +357,7 @@ class Circle:
 
     def translation(self, vector):
         """
-        Methode to translate the object Circle
+        Method to translate the object Circle
         ...
 
         Parameters
@@ -324,7 +366,7 @@ class Circle:
             tuple of point (x,y,z) which represent the direction of the translation
         """
         [
-            gmsh.model.occ.translate([(self.dim, arccircle)], *vector)
+            gmsh.model.geo.translate([(self.dim, arccircle)], *vector)
             for arccircle in self.arcCircle_list
         ]
 
@@ -362,14 +404,18 @@ class Rectangle:
 
         self.mesh_size = mesh_size
         self.dim = 1
-
         # Generate the 4 corners of the rectangle
         self.points = [
-            Point(self.xc - self.dx / 2, self.yc - self.dy / 2, z, self.mesh_size),
-            Point(self.xc + self.dx / 2, self.yc - self.dy / 2, z, self.mesh_size),
-            Point(self.xc + self.dx / 2, self.yc + self.dy / 2, z, self.mesh_size),
-            Point(self.xc - self.dx / 2, self.yc + self.dy / 2, z, self.mesh_size),
+            Point(self.xc - self.dx / 2, self.yc -
+                  self.dy / 2, z, self.mesh_size),
+            Point(self.xc + self.dx / 2, self.yc -
+                  self.dy / 2, z, self.mesh_size),
+            Point(self.xc + self.dx / 2, self.yc +
+                  self.dy / 2, z, self.mesh_size),
+            Point(self.xc - self.dx / 2, self.yc +
+                  self.dy / 2, z, self.mesh_size),
         ]
+        gmsh.model.geo.synchronize()
 
         # Generate the 4 lines of the rectangle
         self.lines = [
@@ -378,6 +424,8 @@ class Rectangle:
             Line(self.points[2], self.points[3]),
             Line(self.points[3], self.points[0]),
         ]
+
+        gmsh.model.geo.synchronize()
 
     def close_loop(self):
         """
@@ -400,10 +448,12 @@ class Rectangle:
         -------
         """
 
-        self.bc_in = gmsh.model.addPhysicalGroup(self.dim, [self.lines[3].tag], tag=-1)
+        self.bc_in = gmsh.model.addPhysicalGroup(
+            self.dim, [self.lines[3].tag], tag=-1)
         gmsh.model.setPhysicalName(self.dim, self.bc_in, "inlet")
 
-        self.bc_out = gmsh.model.addPhysicalGroup(self.dim, [self.lines[1].tag])
+        self.bc_out = gmsh.model.addPhysicalGroup(
+            self.dim, [self.lines[1].tag])
         gmsh.model.setPhysicalName(self.dim, self.bc_out, "outlet")
 
         self.bc_wall = gmsh.model.addPhysicalGroup(
@@ -582,19 +632,21 @@ class AirfoilSpline:
         # Create the Splines depending on the le and te location in point_cloud
         if self.le_indx < self.te_indx:
             # create a spline from the leading edge to the trailing edge
-            self.upper_spline = Spline(self.points[self.le_indx : self.te_indx + 1])
+            self.upper_spline = Spline(
+                self.points[self.le_indx: self.te_indx + 1])
             # create a spline from the trailing edge to the leading edge
             self.lower_spline = Spline(
-                self.points[self.te_indx :] + self.points[: (self.le_indx) + 1]
+                self.points[self.te_indx:] + self.points[: (self.le_indx) + 1]
             )
 
         else:
             # create a spline from the leading edge to the trailing edge
             self.upper_spline = Spline(
-                self.points[self.le_indx :] + self.points[: (self.te_indx + 1)]
+                self.points[self.le_indx:] + self.points[: (self.te_indx + 1)]
             )
             # create a spline from the trailing edge to the leading edge
-            self.lower_spline = Spline(self.points[self.te_indx : self.le_indx + 1])
+            self.lower_spline = Spline(
+                self.points[self.te_indx: self.le_indx + 1])
 
         return self.upper_spline, self.lower_spline
         # form the curvedloop
@@ -671,12 +723,12 @@ class PlaneSurface:
 
         self.geom_objects = geom_objects
         # close_loop() will form a close loop object and return its tag
-        self.tag_list = [geom_object.close_loop() for geom_object in self.geom_objects]
-
+        self.tag_list = [geom_object.close_loop()
+                         for geom_object in self.geom_objects]
         self.dim = 2
 
         # create the gmsh object and store the tag of the geometric object
-        self.tag = gmsh.model.occ.addPlaneSurface(self.tag_list)
+        self.tag = gmsh.model.geo.addPlaneSurface(self.tag_list)
 
     def define_bc(self):
         """
