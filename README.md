@@ -89,4 +89,4 @@ To create a boxed mesh around a NACA 11-H-09 airfoil (the name in the database i
 gmshairfoil2d --airfoil n11h9 --ui --box 2x1.4
 ```
 
-![GMSH result with 2D mesh with boundary layer, rectangular box](images/example_withbl.pdf)
+![GMSH result with 2D mesh with boundary layer, rectangular box](images/example_bl.png)
