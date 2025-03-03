@@ -83,10 +83,10 @@ gmshairfoil2d --airfoil e211 --aoa 8 --box 12x4 --format vtk --ui --no_bl
 
 ![GMSH user interface with the 2D mesh, rectangular box](images/example_mesh_box.png)
 
-To create a boxed mesh around a NACA 11-H-09 airfoil (the name in the database is "dae11"), using the boundary layer with default parameters (first layer of height 3e-5, 35 layers and growth ratio of 1.2)
+To create a boxed mesh around a NACA 11-H-09 airfoil (the name in the database is "n11h9"), using the boundary layer with default parameters (first layer of height 3e-5, 35 layers and growth ratio of 1.2)
 
 ```bash
 gmshairfoil2d --airfoil n11h9 --ui --box 2x1.4
 ```
 
-![GMSH user interface with the 2D mesh, rectangular box](images/example_withbl.pdf)
+![GMSH result with 2D mesh with boundary layer, rectangular box](images/example_withbl.pdf)
