@@ -40,6 +40,10 @@ optional arguments:
   --box [LENGTHxWIDTH]        Create a box mesh of dimensions [length]x[height] [m]
   --airfoil_mesh_size [SIZE]  Mesh size of the airfoil countour [m] (default 0.01m)
   --ext_mesh_size [SIZE]      Mesh size of the external domain [m] (default 0.2m)
+  --no_bl                     Do the meshing without a boundary layer (made with quads)
+  --first_layer [HEIGHT]      Height of the first layer [m] (default 3e-5m)
+  --ratio_bl [RATIO]          Growth ratio for the boundary layer (default 1.2)
+  --nb_layers [NB]            Total number of layers in the boundary layer (default 35)
   --format [FORMAT]           format of the mesh file, e.g: msh, vtk, wrl, stl, mesh, cgns, su2,
                               dat (default su2)
   --output [PATH]             output path for the mesh file (default : current dir)
@@ -60,7 +64,7 @@ For all the following examples, the defauld chord lenght is 1 meter.
 To create a circular farfield mesh around a NACA0012 of 10m of radius and see the result with GMSH user interface:
 
 ```bash
-gmshairfoil2d --naca 0012 --farfield 10 --ui
+gmshairfoil2d --naca 0012 --farfield 10 --ui --no_bl
 ```
 
 ![GMSH user interface with the 2D mesh](images/example_mesh.png)
@@ -68,13 +72,13 @@ gmshairfoil2d --naca 0012 --farfield 10 --ui
 To create a circular farfield mesh around a Drela DAE11 airfoil (the name in the database is "dae11") of 20m or radius with a mesh size of 0.005m on the airfoil:
 
 ```bash
-gmshairfoil2d --airfoil dae11 --farfield 20 --airfoil_mesh_size 0.005
+gmshairfoil2d --airfoil dae11 --farfield 20 --airfoil_mesh_size 0.005 --no_bl
 ```
 
 To create mesh around a Eppler E220 airfoil (the name in the database is "e211") with an angle of attack of 8 degree in a box of 12x4m (lenght x hight) and save it as a vtk mesh and see the result with GMSH user interface:
 
 ```bash
-gmshairfoil2d --airfoil e211 --aoa 8 --box 12x4 --format vtk --ui
+gmshairfoil2d --airfoil e211 --aoa 8 --box 12x4 --format vtk --ui --no_bl
 ```
 
 ![GMSH user interface with the 2D mesh, rectangular box](images/example_mesh_box.png)
