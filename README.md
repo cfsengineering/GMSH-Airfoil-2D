@@ -75,7 +75,7 @@ To create a circular farfield mesh around a Drela DAE11 airfoil (the name in the
 gmshairfoil2d --airfoil dae11 --farfield 20 --airfoil_mesh_size 0.005 --no_bl
 ```
 
-To create mesh around a Eppler E220 airfoil (the name in the database is "e211") with an angle of attack of 8 degree in a box of 12x4m (lenght x hight) and save it as a vtk mesh and see the result with GMSH user interface:
+To create mesh around a Eppler E220 airfoil (the name in the database is "e211") with an angle of attack of 8 degree in a box of 12x4m (lenght x height) and save it as a vtk mesh and see the result with GMSH user interface:
 
 ```bash
 gmshairfoil2d --airfoil e211 --aoa 8 --box 12x4 --format vtk --ui --no_bl
