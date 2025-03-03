@@ -40,6 +40,10 @@ optional arguments:
   --box [LENGTHxWIDTH]        Create a box mesh of dimensions [length]x[height] [m]
   --airfoil_mesh_size [SIZE]  Mesh size of the airfoil countour [m] (default 0.01m)
   --ext_mesh_size [SIZE]      Mesh size of the external domain [m] (default 0.2m)
+  --no_bl                     Do the meshing without a boundary layer (made with quads)
+  --first_layer [HEIGHT]      Height of the first layer [m] (default 3e-5m)
+  --ratio_bl [RATIO]          Growth ratio for the boundary layer (default 1.2)
+  --nb_layers [NB]            Total number of layers in the boundary layer (default 35)
   --format [FORMAT]           format of the mesh file, e.g: msh, vtk, wrl, stl, mesh, cgns, su2,
                               dat (default su2)
   --output [PATH]             output path for the mesh file (default : current dir)
