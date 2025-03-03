@@ -183,7 +183,7 @@ class Spline:
 
     def translation(self, vector):
         """
-        Methode to translate the object Line
+        Method to translate the object Line
 
         Translate the spline itself (curve, starpoint,endpoint), then translate the indermediate points
         ...
@@ -465,7 +465,7 @@ class Rectangle:
 
     def rotation(self, angle, origin, axis):
         """
-        Methode to rotate the object Rectangle
+        Method to rotate the object Rectangle
         ...
 
         Parameters
@@ -481,7 +481,7 @@ class Rectangle:
 
     def translation(self, vector):
         """
-        Methode to translate the object Rectangle
+        Method to translate the object Rectangle
         ...
 
         Parameters
@@ -503,7 +503,7 @@ class Airfoil:
     point_cloud : list(list(float))
         List of points forming the airfoil in the order,
         each point is a list containing in the order
-        its postion x,y,z
+        its position x,y,z
     mesh_size : float
         attribute given for the class Point,Note that a mesh size larger
         than the resolution given by the cloud of points
@@ -573,7 +573,7 @@ class Airfoil:
 
     def translation(self, vector):
         """
-        Methode to translate the object CurveLoop
+        Method to translate the object CurveLoop
         ...
 
         Parameters
@@ -594,7 +594,7 @@ class AirfoilSpline:
     point_cloud : list(list(float))
         List of points forming the airfoil in the order,
         each point is a list containing in the order
-        its postion x,y,z
+        its position x,y,z
     mesh_size : float
         attribute given for the class Point,Note that a mesh size larger
         than the resolution given by the cloud of points
@@ -675,7 +675,7 @@ class AirfoilSpline:
 
     def rotation(self, angle, origin, axis):
         """
-        Methode to rotate the object AirfoilSpline
+        Method to rotate the object AirfoilSpline
         ...
 
         Parameters
@@ -691,7 +691,7 @@ class AirfoilSpline:
 
     def translation(self, vector):
         """
-        Methode to translate the object AirfoilSpline
+        Method to translate the object AirfoilSpline
         ...
 
         Parameters

@@ -34,7 +34,7 @@ def main():
         type=str,
         metavar="4DIGITS",
         nargs="?",
-        help="NACA airfoil 4 digit (default 0012)",
+        help="NACA airfoil 4 digit",
     )
 
     parser.add_argument(
@@ -123,8 +123,8 @@ def main():
         "--format",
         type=str,
         nargs="?",
-        default="msh",
-        help="format of the mesh file, e.g: msh, vtk, wrl, stl, mesh, cgns, su2, dat (default msh)",
+        default="su2",
+        help="format of the mesh file, e.g: msh, vtk, wrl, stl, mesh, cgns, su2, dat (default su2)",
     )
 
     parser.add_argument(
@@ -200,6 +200,28 @@ def main():
         for i in range(1, N):
             d.append(d[-1] - (-d[0]) * r**i)
 
+        # Need to check that the layers do not go outside the box/circle
+        if args.box:
+            length, width = [float(value) for value in args.box.split("x")]
+            minx = min(p[0] for p in cloud_points)
+            maxx = max(p[0] for p in cloud_points)
+            miny = min(p[1] for p in cloud_points)
+            maxy = max(p[1] for p in cloud_points)
+            if maxx-minx-2*d[-1] > length or maxy-miny-2*d[-1] > width:
+                print("\nThe boundary layer is bigger than the box, exiting")
+                print(
+                    "You must change the boundary layer parameters or choose a bigger box\n")
+                sys.exit()
+        else:
+            radius = args.farfield
+            maxr2 = max((p[0]-0.5)*(p[0]-0.5)+p[1]*p[1] for p in cloud_points)
+            if math.sqrt(maxr2)-d[-1] > radius:
+                print("\nThe boundary layer is bigger than the circle, exiting")
+                print(
+                    "You must change the boundary layer parameters or choose a bigger radius\n")
+                sys.exit()
+        # self.le = min(self.points, key=attrgetter("x"))
+        # self.te = max(self.points, key=attrgetter("x"))
         # Function that does the boundary layer
         extbl_tags = gmsh.model.geo.extrudeBoundaryLayer(
             gmsh.model.getEntities(1), [1] * N, d, True)
