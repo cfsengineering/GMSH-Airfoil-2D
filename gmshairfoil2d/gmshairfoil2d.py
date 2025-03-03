@@ -220,8 +220,7 @@ def main():
                 print(
                     "You must change the boundary layer parameters or choose a bigger radius\n")
                 sys.exit()
-        # self.le = min(self.points, key=attrgetter("x"))
-        # self.te = max(self.points, key=attrgetter("x"))
+
         # Function that does the boundary layer
         extbl_tags = gmsh.model.geo.extrudeBoundaryLayer(
             gmsh.model.getEntities(1), [1] * N, d, True)
