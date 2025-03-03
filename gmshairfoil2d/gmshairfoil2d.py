@@ -168,14 +168,12 @@ def main():
         parser.print_help()
         sys.exit()
 
-    print("before", cloud_points)
     # Points need to go clockwise
     l = len(cloud_points)
     if cloud_points[0][0] > 0.5 and cloud_points[l//4][1] > 0:
         cloud_points.reverse()
     if cloud_points[0][0] < 0.5 and cloud_points[l//4][1] < 0:
         cloud_points.reverse()
-    print("\nafter", cloud_points)
 
     # Angle of attack
     aoa = -args.aoa * (math.pi / 180)
