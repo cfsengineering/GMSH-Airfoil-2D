@@ -207,7 +207,7 @@ def main():
             maxx = max(p[0] for p in cloud_points)
             miny = min(p[1] for p in cloud_points)
             maxy = max(p[1] for p in cloud_points)
-            if maxx-minx-2*d[-1] > length or maxy-miny-2*d[-1] > width:
+            if abs(maxx-0.5)+abs(d[-1]) > length/2 or abs(minx-0.5)+abs(d[-1]) > length/2 or abs(maxy)+abs(d[-1]) > width/2 or abs(miny)+abs(d[-1]) > width/2:
                 print("\nThe boundary layer is bigger than the box, exiting")
                 print(
                     "You must change the boundary layer parameters or choose a bigger box\n")
