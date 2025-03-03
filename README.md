@@ -32,7 +32,7 @@ optional arguments:
   -h, --help                  show this help message and exit
   --list                      Display all airfoil available in the database :
                               https://m-selig.ae.illinois.edu/ads/coord_database.html
-  --naca [4DIGITS]            NACA airfoil 4 digit (default 0012)
+  --naca [4DIGITS]            NACA airfoil 4 digit
   --airfoil [NAME]            Name of an airfoil profile in the database (database available with
                               the --list argument)
   --aoa [AOA]                 Angle of attack [deg] (default: 0 [deg])
