@@ -168,6 +168,15 @@ def main():
         parser.print_help()
         sys.exit()
 
+    print("before", cloud_points)
+    # Points need to go clockwise
+    l = len(cloud_points)
+    if cloud_points[0][0] > 0.5 and cloud_points[l//4][1] > 0:
+        cloud_points.reverse()
+    if cloud_points[0][0] < 0.5 and cloud_points[l//4][1] < 0:
+        cloud_points.reverse()
+    print("\nafter", cloud_points)
+
     # Angle of attack
     aoa = -args.aoa * (math.pi / 180)
 
@@ -189,6 +198,7 @@ def main():
         N = args.nb_layers
         r = args.ratio_bl
         d = [-args.first_layer]
+        # Construct the vector of cumulative distance of each layer from airfoil
         for i in range(1, N):
             d.append(d[-1] - (-d[0]) * r**i)
 
