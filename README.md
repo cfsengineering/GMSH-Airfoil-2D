@@ -46,6 +46,8 @@ optional arguments:
   --nb_layers [NB]            Total number of layers in the boundary layer (default 35)
   --format [FORMAT]           format of the mesh file, e.g: msh, vtk, wrl, stl, mesh, cgns, su2,
                               dat (default su2)
+  --cut_te                    Change the trailing edge by cutting the last point (when pointy) to help with
+                              boundary layer
   --output [PATH]             output path for the mesh file (default : current dir)
   --ui                        Open GMSH user interface to see the mesh
 
