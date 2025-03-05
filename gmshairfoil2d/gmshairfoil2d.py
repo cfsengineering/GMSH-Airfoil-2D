@@ -260,7 +260,7 @@ def main():
 
     # Generate mesh
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
-    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 20)
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
     gmsh.model.mesh.generate(2)
     gmsh.model.mesh.optimize("Laplace2D", 5)
 

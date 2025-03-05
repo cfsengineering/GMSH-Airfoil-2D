@@ -32,7 +32,6 @@ class Point:
         self.x = x
         self.y = y
         self.z = z
-
         self.mesh_size = mesh_size
         self.dim = 0
 
@@ -247,6 +246,67 @@ class CurveLoop:
         self.bc = gmsh.model.addPhysicalGroup(self.dim, [self.tag])
         self.physical_name = gmsh.model.setPhysicalName(
             self.dim, self.bc, "top of boundary layer")
+
+
+class CircleArc:
+    """
+    A class to represent a CircleArc geometrical object (a arccirle of angle less than pi)
+
+    ...
+
+    Attributes
+    ----------
+    xc : float
+        position of the center in x
+    yc : float
+        position of the center in y
+    z : float
+        position in z
+    startpoint : Point
+        starting point of the arccircle
+    endpoint : Point
+        ending point of the arccircle
+    mesh_size : float
+        determine the mesh resolution and how many segment the
+        resulting circle will be composed of
+    """
+
+    def __init__(self, xc, yc, zc, start, end, mesh_size):
+        # Position of the disk center
+        self.xc = xc
+        self.yc = yc
+        self.zc = zc
+
+        self.startpoint = start
+        self.endpoint = end
+        self.mesh_size = mesh_size
+        self.dim = 1
+
+        center = Point(self.xc, self.yc, self.zc, self.mesh_size)
+        self.tag = gmsh.model.geo.addCircleArc(
+            self.startpoint.tag, center.tag, self.endpoint.tag)
+
+    def close_loop(self):
+        """
+        Method to form a close loop with the current geometrical object
+
+        Returns
+        -------
+        _ : int
+            return the tag of the CurveLoop object
+        """
+        return gmsh.model.geo.addCurveLoop(self.arcCircle_list)
+
+    def define_bc(self):
+        """
+        Method that define the marker of the circle
+        for the boundary condition
+        -------
+        """
+
+        self.bc = gmsh.model.addPhysicalGroup(self.dim, self.arcCircle_list)
+        self.physical_name = gmsh.model.setPhysicalName(
+            self.dim, self.bc, "farfield")
 
 
 class Circle:
@@ -647,8 +707,6 @@ class AirfoilSpline:
         """
         # Create the Splines depending on the le and te location in point_cloud
         if self.cut_te:
-            print("le,tedown,teup", self.le_indx,
-                  self.te_down_indx, self.te_up_indx)
             if self.le_indx < self.te_up_indx:
                 # create a spline from the leading edge to the trailing edge
                 self.upper_spline = Spline(
@@ -673,8 +731,13 @@ class AirfoilSpline:
                 # create a spline from the trailing edge to the leading edge
                 self.lower_spline = Spline(
                     self.points[self.te_down_indx: self.le_indx + 1])
-            self.te_line = Line(
-                self.points[self.te_up_indx], self.points[self.te_down_indx])
+            distance = self.points[self.te_up_indx].y - \
+                self.points[self.te_down_indx].y
+            print(distance, min(self.points[self.te_up_indx].x, self.points[self.te_down_indx].x)-distance/3, "(", self.points[self.te_up_indx].x, self.points[self.te_up_indx].y,
+                  self.points[self.te_up_indx].z, ")", "(", self.points[self.te_down_indx].x, self.points[self.te_down_indx].y, self.points[self.te_down_indx].z, ")")
+            self.te_line = CircleArc(min(self.points[self.te_up_indx].x, self.points[self.te_down_indx].x)-distance/3, 0, 0,
+                                     self.points[self.te_up_indx], self.points[self.te_down_indx], self.points[0].mesh_size)
+            gmsh.model.geo.mesh.setTransfiniteCurve(self.te_line.tag, 10)
             return self.upper_spline, self.lower_spline, self.te_line
         else:
             if self.le_indx < self.te_indx:
