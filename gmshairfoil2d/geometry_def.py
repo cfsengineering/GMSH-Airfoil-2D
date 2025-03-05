@@ -599,16 +599,18 @@ class AirfoilSpline:
         attribute given for the class Point,Note that a mesh size larger
         than the resolution given by the cloud of points
         will not be taken into account
+    cut_te: bool
+        attribute given to hold true when we want a cute trailing edge, instead of a pointy one
     name : str
         name of the marker that will be associated to the airfoil
         boundary condition
     """
 
-    def __init__(self, point_cloud, mesh_size, name="airfoil"):
+    def __init__(self, point_cloud, mesh_size, cut_te, name="airfoil"):
 
         self.name = name
         self.dim = 1
-
+        self.cut_te = cut_te
         # Generate Points object from the point_cloud
         self.points = [
             Point(point_cord[0], point_cord[1], point_cord[2], mesh_size)
@@ -618,10 +620,24 @@ class AirfoilSpline:
         # in space
         self.le = min(self.points, key=attrgetter("x"))
         self.te = max(self.points, key=attrgetter("x"))
-
         # in the list of point
-        self.le_indx = self.points.index(self.le)
         self.te_indx = self.points.index(self.te)
+        self.le_indx = self.points.index(self.le)
+        if cut_te:
+            self.points.pop(self.te_indx)
+            te1 = self.points[self.te_indx-1]
+            if self.te_indx == len(self.points):
+                te2 = self.points[0]
+            else:
+                te2 = self.points[self.te_indx]
+            if te1.y < te2.y:
+                self.te_down = te1
+                self.te_up = te2
+            else:
+                self.te_down = te2
+                self.te_up = te1
+            self.te_down_indx = self.points.index(self.te_down)
+            self.te_up_indx = self.points.index(self.te_up)
 
     def gen_skin(self):
         """
@@ -630,25 +646,57 @@ class AirfoilSpline:
         -------
         """
         # Create the Splines depending on the le and te location in point_cloud
-        if self.le_indx < self.te_indx:
-            # create a spline from the leading edge to the trailing edge
-            self.upper_spline = Spline(
-                self.points[self.le_indx: self.te_indx + 1])
-            # create a spline from the trailing edge to the leading edge
-            self.lower_spline = Spline(
-                self.points[self.te_indx:] + self.points[: (self.le_indx) + 1]
-            )
-
+        if self.cut_te:
+            print("le,tedown,teup", self.le_indx,
+                  self.te_down_indx, self.te_up_indx)
+            if self.le_indx < self.te_up_indx:
+                # create a spline from the leading edge to the trailing edge
+                self.upper_spline = Spline(
+                    self.points[self.le_indx: self.te_up_indx + 1])
+                # create a spline from the trailing edge to the leading edge
+                if self.te_down_indx < self.le_indx:
+                    # in this case we have te_down_index=0, as te_down_index is always one behind te_up_index
+                    self.lower_spline = Spline(
+                        self.points[: (self.le_indx) + 1]
+                    )
+                else:
+                    self.lower_spline = Spline(
+                        self.points[self.te_down_indx:] +
+                        self.points[: (self.le_indx) + 1]
+                    )
+            else:
+                # create a spline from the leading edge to the trailing edge
+                self.upper_spline = Spline(
+                    self.points[self.le_indx:] +
+                    self.points[: (self.te_up_indx + 1)]
+                )
+                # create a spline from the trailing edge to the leading edge
+                self.lower_spline = Spline(
+                    self.points[self.te_down_indx: self.le_indx + 1])
+            self.te_line = Line(
+                self.points[self.te_up_indx], self.points[self.te_down_indx])
+            return self.upper_spline, self.lower_spline, self.te_line
         else:
-            # create a spline from the leading edge to the trailing edge
-            self.upper_spline = Spline(
-                self.points[self.le_indx:] + self.points[: (self.te_indx + 1)]
-            )
-            # create a spline from the trailing edge to the leading edge
-            self.lower_spline = Spline(
-                self.points[self.te_indx: self.le_indx + 1])
+            if self.le_indx < self.te_indx:
+                # create a spline from the leading edge to the trailing edge
+                self.upper_spline = Spline(
+                    self.points[self.le_indx: self.te_indx + 1])
+                # create a spline from the trailing edge to the leading edge
+                self.lower_spline = Spline(
+                    self.points[self.te_indx:] +
+                    self.points[: (self.le_indx) + 1]
+                )
 
-        return self.upper_spline, self.lower_spline
+            else:
+                # create a spline from the leading edge to the trailing edge
+                self.upper_spline = Spline(
+                    self.points[self.le_indx:] +
+                    self.points[: (self.te_indx + 1)]
+                )
+                # create a spline from the trailing edge to the leading edge
+                self.lower_spline = Spline(
+                    self.points[self.te_indx: self.le_indx + 1])
+            return self.upper_spline, self.lower_spline
         # form the curvedloop
 
     def close_loop(self):
@@ -660,7 +708,10 @@ class AirfoilSpline:
         _ : int
             return the tag of the CurveLoop object
         """
-        return CurveLoop([self.upper_spline, self.lower_spline]).tag
+        if self.cut_te:
+            return CurveLoop([self.upper_spline, self.te_line, self.lower_spline]).tag
+        else:
+            return CurveLoop([self.upper_spline, self.lower_spline]).tag
 
     def define_bc(self):
         """

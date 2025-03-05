@@ -5,12 +5,13 @@ import argparse
 import math
 import sys
 from pathlib import Path
+import numpy as np
 
 import gmsh
 from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_points,
                                         get_all_available_airfoil_names)
 from gmshairfoil2d.geometry_def import (AirfoilSpline, Circle, PlaneSurface,
-                                        Rectangle, CurveLoop, Line, Point)
+                                        Rectangle, CurveLoop)
 
 
 def main():
@@ -124,7 +125,12 @@ def main():
         type=str,
         nargs="?",
         default="su2",
-        help="format of the mesh file, e.g: msh, vtk, wrl, stl, mesh, cgns, su2, dat (default su2)",
+        help="Format of the mesh file, e.g: msh, vtk, wrl, stl, mesh, cgns, su2, dat (default su2)",
+    )
+    parser.add_argument(
+        "--cut_te",
+        action="store_true",
+        help="Change the trailing edge by cutting the last point to help with boundary layer",
     )
 
     parser.add_argument(
@@ -133,7 +139,7 @@ def main():
         metavar="PATH",
         nargs="?",
         default=".",
-        help="output path for the mesh file (default : current dir)",
+        help="Output path for the mesh file (default : current dir)",
     )
 
     parser.add_argument(
@@ -182,7 +188,7 @@ def main():
     gmsh.initialize()
 
     # Airfoil
-    airfoil = AirfoilSpline(cloud_points, args.airfoil_mesh_size)
+    airfoil = AirfoilSpline(cloud_points, args.airfoil_mesh_size, args.cut_te)
     airfoil.rotation(aoa, (0.5, 0, 0), (0, 0, 1))
     airfoil.gen_skin()
     gmsh.model.geo.synchronize()
@@ -254,8 +260,9 @@ def main():
 
     # Generate mesh
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
-    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
+    gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 20)
     gmsh.model.mesh.generate(2)
+    gmsh.model.mesh.optimize("Laplace2D", 5)
 
     # Open user interface of GMSH
     if args.ui:
