@@ -684,20 +684,42 @@ class AirfoilSpline:
         self.te_indx = self.points.index(self.te)
         self.le_indx = self.points.index(self.le)
         if cut_te:
-            self.points.pop(self.te_indx)
-            te1 = self.points[self.te_indx-1]
-            if self.te_indx == len(self.points):
-                te2 = self.points[0]
+            if self.points[self.te_indx-1].x == 1:
+                if self.points[self.te_indx-1].y > self.points[self.te_indx].y:
+                    self.te_up_indx = self.te_indx-1
+                    self.te_down_indx = self.te_indx
+                else:
+                    self.te_up_indx = self.te_indx
+                    self.te_down_indx = self.te_indx-1
+            elif (self.te_indx != len(self.points) and self.points[self.te_indx+1].x == 1):
+                if self.points[self.te_indx+1].y > self.points[self.te_indx].y:
+                    self.te_up_indx = self.te_indx+1
+                    self.te_down_indx = self.te_indx
+                else:
+                    self.te_up_indx = self.te_indx
+                    self.te_down_indx = self.te_indx+1
+            elif (self.te_indx == len(self.points) and self.points[0].x == 1):
+                if self.points[0].y > self.points[self.te_indx].y:
+                    self.te_up_indx = 0
+                    self.te_down_indx = self.te_indx
+                else:
+                    self.te_up_indx = self.te_indx
+                    self.te_down_indx = 0
             else:
-                te2 = self.points[self.te_indx]
-            if te1.y < te2.y:
-                self.te_down = te1
-                self.te_up = te2
-            else:
-                self.te_down = te2
-                self.te_up = te1
-            self.te_down_indx = self.points.index(self.te_down)
-            self.te_up_indx = self.points.index(self.te_up)
+                self.points.pop(self.te_indx)
+                te1 = self.points[self.te_indx-1]
+                if self.te_indx == len(self.points):
+                    te2 = self.points[0]
+                else:
+                    te2 = self.points[self.te_indx]
+                if te1.y < te2.y:
+                    self.te_down = te1
+                    self.te_up = te2
+                else:
+                    self.te_down = te2
+                    self.te_up = te1
+                self.te_down_indx = self.points.index(self.te_down)
+                self.te_up_indx = self.points.index(self.te_up)
 
     def gen_skin(self):
         """
@@ -731,12 +753,16 @@ class AirfoilSpline:
                 # create a spline from the trailing edge to the leading edge
                 self.lower_spline = Spline(
                     self.points[self.te_down_indx: self.le_indx + 1])
-            distance = self.points[self.te_up_indx].y - \
-                self.points[self.te_down_indx].y
-            print(distance, min(self.points[self.te_up_indx].x, self.points[self.te_down_indx].x)-distance/3, "(", self.points[self.te_up_indx].x, self.points[self.te_up_indx].y,
-                  self.points[self.te_up_indx].z, ")", "(", self.points[self.te_down_indx].x, self.points[self.te_down_indx].y, self.points[self.te_down_indx].z, ")")
-            self.te_line = CircleArc(min(self.points[self.te_up_indx].x, self.points[self.te_down_indx].x)-distance/3, 0, 0,
-                                     self.points[self.te_up_indx], self.points[self.te_down_indx], self.points[0].mesh_size)
+            x1 = self.points[self.te_up_indx].x
+            x2 = self.points[self.te_down_indx].x
+            y1 = self.points[self.te_up_indx].y
+            y2 = self.points[self.te_down_indx].y
+            distance = math.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2))
+            print(x1, x2, y1, y2, "and", (x1+x2) /
+                  2, (x1+x2)/2+distance/2*(y2-y1))
+            self.te_line = CircleArc(
+                (x1+x2)/2+(y2-y1)/3, (y1+y2)/2+(x1-x2)/3, 0,
+                self.points[self.te_up_indx], self.points[self.te_down_indx], self.points[0].mesh_size)
             gmsh.model.geo.mesh.setTransfiniteCurve(self.te_line.tag, 10)
             return self.upper_spline, self.lower_spline, self.te_line
         else:
