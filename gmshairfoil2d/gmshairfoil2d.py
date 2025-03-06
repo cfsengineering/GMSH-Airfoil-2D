@@ -184,7 +184,7 @@ def main():
     # Points need to go clockwise (and still start with 0)
     # (Needed for boundary layer, as is oriented)
     l = len(cloud_points)
-    if cloud_points[0][0] < 0.5 and cloud_points[l//8][1] < 0:
+    if cloud_points[1][1] < 0:
         cloud_points.reverse()
         cloud_points = cloud_points[l-1:] + cloud_points[:l-1]
 
