@@ -6,6 +6,7 @@ from operator import attrgetter
 import gmsh
 import numpy as np
 import math
+import sys
 
 
 class Point:
@@ -227,7 +228,8 @@ class CurveLoop:
 
     def close_loop(self):
         """
-        Method to form a close loop with the current geometrical object. In our case, we already have it so just return the tag
+        Method to form a close loop with the current geometrical object. In our case,
+        we already have it so just return the tag
 
         Returns
         -------
@@ -250,7 +252,7 @@ class CurveLoop:
 
 class CircleArc:
     """
-    A class to represent a CircleArc geometrical object (a arccirle of angle less than pi)
+    A class to represent a CircleArc geometrical object (a arc-cirle of angle less than pi)
 
     ...
 
@@ -285,28 +287,6 @@ class CircleArc:
         center = Point(self.xc, self.yc, self.zc, self.mesh_size)
         self.tag = gmsh.model.geo.addCircleArc(
             self.startpoint.tag, center.tag, self.endpoint.tag)
-
-    def close_loop(self):
-        """
-        Method to form a close loop with the current geometrical object
-
-        Returns
-        -------
-        _ : int
-            return the tag of the CurveLoop object
-        """
-        return gmsh.model.geo.addCurveLoop(self.arcCircle_list)
-
-    def define_bc(self):
-        """
-        Method that define the marker of the circle
-        for the boundary condition
-        -------
-        """
-
-        self.bc = gmsh.model.addPhysicalGroup(self.dim, self.arcCircle_list)
-        self.physical_name = gmsh.model.setPhysicalName(
-            self.dim, self.bc, "farfield")
 
 
 class Circle:
@@ -671,6 +651,7 @@ class AirfoilSpline:
         self.name = name
         self.dim = 1
         self.cut_te = cut_te
+
         # Generate Points object from the point_cloud
         self.points = [
             Point(point_cord[0], point_cord[1], point_cord[2], mesh_size)
@@ -683,43 +664,37 @@ class AirfoilSpline:
         # in the list of point
         self.te_indx = self.points.index(self.te)
         self.le_indx = self.points.index(self.le)
+        # Just a check that the points start with the (0,0,0) points, bc then we assume that are sorted
+        if self.le_indx != 0:
+            print("Error in the points numeration")
+            sys.exit()
+
+        # If we want to cut the trailing edge to put a small circle, we need to find the two points in the end
         if cut_te:
-            if self.points[self.te_indx-1].x == 1:
-                if self.points[self.te_indx-1].y > self.points[self.te_indx].y:
-                    self.te_up_indx = self.te_indx-1
-                    self.te_down_indx = self.te_indx
-                else:
-                    self.te_up_indx = self.te_indx
-                    self.te_down_indx = self.te_indx-1
-            elif (self.te_indx != len(self.points) and self.points[self.te_indx+1].x == 1):
-                if self.points[self.te_indx+1].y > self.points[self.te_indx].y:
-                    self.te_up_indx = self.te_indx+1
-                    self.te_down_indx = self.te_indx
-                else:
-                    self.te_up_indx = self.te_indx
-                    self.te_down_indx = self.te_indx+1
-            elif (self.te_indx == len(self.points) and self.points[0].x == 1):
-                if self.points[0].y > self.points[self.te_indx].y:
-                    self.te_up_indx = 0
-                    self.te_down_indx = self.te_indx
-                else:
-                    self.te_up_indx = self.te_indx
-                    self.te_down_indx = 0
+            # First we check if the airfoil already ends with 2 points vertical of each other
+            # (happens in the airfoil from database, ex: hor07), and in this case they are both close to 1
+            if self.points[self.te_indx-1].x > 0.9999:
+                # Choose up and down as they are sorted and clockwise
+                self.te_up_indx = self.te_indx-1
+                self.te_down_indx = self.te_indx
+            elif self.points[self.te_indx+1].x > 0.9999:
+                self.te_up_indx = self.te_indx
+                self.te_down_indx = self.te_indx+1
+            # If trailing edge ends with a "sharp" point, we take it off and take the two next
+            # points on upper and lower splines (the before and after in the list, as sorted)
             else:
                 self.points.pop(self.te_indx)
-                te1 = self.points[self.te_indx-1]
-                if self.te_indx == len(self.points):
-                    te2 = self.points[0]
-                else:
-                    te2 = self.points[self.te_indx]
-                if te1.y < te2.y:
-                    self.te_down = te1
-                    self.te_up = te2
-                else:
-                    self.te_down = te2
-                    self.te_up = te1
-                self.te_down_indx = self.points.index(self.te_down)
-                self.te_up_indx = self.points.index(self.te_up)
+                self.te_up_indx = self.te_indx-1
+                self.te_down_indx = self.te_indx
+            # Now to adapt the mesh, we want the first point after 0.7
+            for p in self.points:
+                if p.x > 0.71:
+                    self.up_middle_indx = self.points.index(p)
+                    break
+            for p in self.points[self.up_middle_indx:]:
+                if p.x < 0.71:
+                    self.down_middle_indx = self.points.index(p)-1
+                    break
 
     def gen_skin(self):
         """
@@ -729,62 +704,72 @@ class AirfoilSpline:
         """
         # Create the Splines depending on the le and te location in point_cloud
         if self.cut_te:
-            if self.le_indx < self.te_up_indx:
-                # create a spline from the leading edge to the trailing edge
-                self.upper_spline = Spline(
-                    self.points[self.le_indx: self.te_up_indx + 1])
-                # create a spline from the trailing edge to the leading edge
-                if self.te_down_indx < self.le_indx:
-                    # in this case we have te_down_index=0, as te_down_index is always one behind te_up_index
-                    self.lower_spline = Spline(
-                        self.points[: (self.le_indx) + 1]
-                    )
-                else:
-                    self.lower_spline = Spline(
-                        self.points[self.te_down_indx:] +
-                        self.points[: (self.le_indx) + 1]
-                    )
-            else:
-                # create a spline from the leading edge to the trailing edge
-                self.upper_spline = Spline(
-                    self.points[self.le_indx:] +
-                    self.points[: (self.te_up_indx + 1)]
-                )
-                # create a spline from the trailing edge to the leading edge
-                self.lower_spline = Spline(
-                    self.points[self.te_down_indx: self.le_indx + 1])
+            # create a spline from the leading edge to the "middle" of the up edge
+            self.upper_splineL = Spline(
+                self.points[self.le_indx: self.up_middle_indx + 1])
+            # create a spline from the "middle" of the up edge to the up trailing edge
+            self.upper_splineR = Spline(
+                self.points[self.up_middle_indx: self.te_up_indx + 1])
+            # create a spline from the down trailing edge edge to the "middle" of the down edge
+            self.lower_splineR = Spline(
+                self.points[self.te_down_indx: self.down_middle_indx + 1])
+            # create a spline from the "middle" of the down edge to the leading edge
+            self.lower_splineL = Spline(
+                self.points[self.down_middle_indx:] +
+                self.points[:1]
+            )
+            # Create the circle at the trailing edge
             x1 = self.points[self.te_up_indx].x
             x2 = self.points[self.te_down_indx].x
             y1 = self.points[self.te_up_indx].y
             y2 = self.points[self.te_down_indx].y
-            distance = math.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2))
-            print(x1, x2, y1, y2, "and", (x1+x2) /
-                  2, (x1+x2)/2+distance/2*(y2-y1))
             self.te_line = CircleArc(
-                (x1+x2)/2+(y2-y1)/3, (y1+y2)/2+(x1-x2)/3, 0,
+                (x1+x2)/2+(y2-y1)/10, (y1+y2)/2+(x1-x2)/10, 0,
                 self.points[self.te_up_indx], self.points[self.te_down_indx], self.points[0].mesh_size)
-            gmsh.model.geo.mesh.setTransfiniteCurve(self.te_line.tag, 10)
-            return self.upper_spline, self.lower_spline, self.te_line
-        else:
-            if self.le_indx < self.te_indx:
-                # create a spline from the leading edge to the trailing edge
-                self.upper_spline = Spline(
-                    self.points[self.le_indx: self.te_indx + 1])
-                # create a spline from the trailing edge to the leading edge
-                self.lower_spline = Spline(
-                    self.points[self.te_indx:] +
-                    self.points[: (self.le_indx) + 1]
-                )
 
-            else:
-                # create a spline from the leading edge to the trailing edge
-                self.upper_spline = Spline(
-                    self.points[self.le_indx:] +
-                    self.points[: (self.te_indx + 1)]
-                )
-                # create a spline from the trailing edge to the leading edge
-                self.lower_spline = Spline(
-                    self.points[self.te_indx: self.le_indx + 1])
+            gmsh.model.geo.mesh.setTransfiniteCurve(self.te_line.tag, 10)
+
+            x3 = self.points[self.up_middle_indx].x
+            x4 = self.points[self.down_middle_indx].x
+            y3 = self.points[self.up_middle_indx].y
+            y4 = self.points[self.down_middle_indx].y
+            mshsize = self.points[0].mesh_size
+            distance = math.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2))
+            a = ((1.4006*distance/(9))+mshsize)/3
+            b = mshsize
+            l = math.sqrt((x3-x1)*(x3-x1)+(y3-y1)*(y3-y1))
+            r = (l-a)/(l-b)
+            N = math.floor(math.log(b/a)/math.log(r)+2)
+            gmsh.model.geo.mesh.setTransfiniteCurve(
+                self.upper_splineR.tag, N, meshType="Progression", coef=-r)
+            a2 = ((1.4006*distance/(9))+mshsize)/3
+            l2 = math.sqrt((x4-x2)*(x4-x2)+(y4-y2)*(y4-y2))
+            r2 = (l2-a2)/(l2-b)
+            N2 = math.floor(math.log(b/a2)/math.log(r2)+2)
+            gmsh.model.geo.mesh.setTransfiniteCurve(
+                self.lower_splineR.tag, N2, meshType="Progression", coef=r2)
+
+            return self.upper_splineL, self.upper_splineR, self.te_line, self.lower_splineR, self.lower_splineL
+        else:
+            # if self.le_indx < self.te_indx:
+            # create a spline from the leading edge to the trailing edge
+            self.upper_spline = Spline(
+                self.points[self.le_indx: self.te_indx + 1])
+            # create a spline from the trailing edge to the leading edge
+            self.lower_spline = Spline(
+                self.points[self.te_indx:] +
+                self.points[: (self.le_indx) + 1]
+            )
+
+            # else:
+            #    # create a spline from the leading edge to the trailing edge
+            #    self.upper_spline = Spline(
+            #        self.points[self.le_indx:] +
+            #        self.points[: (self.te_indx + 1)]
+            #    )
+            #    # create a spline from the trailing edge to the leading edge
+            #    self.lower_spline = Spline(
+            #        self.points[self.te_indx: self.le_indx + 1])
             return self.upper_spline, self.lower_spline
         # form the curvedloop
 
@@ -798,7 +783,7 @@ class AirfoilSpline:
             return the tag of the CurveLoop object
         """
         if self.cut_te:
-            return CurveLoop([self.upper_spline, self.te_line, self.lower_spline]).tag
+            return CurveLoop([self.upper_splineL, self.upper_splineR, self.te_line, self.lower_splineR, self.lower_splineL]).tag
         else:
             return CurveLoop([self.upper_spline, self.lower_spline]).tag
 
@@ -807,10 +792,15 @@ class AirfoilSpline:
         Method that define the marker of the airfoil for the boundary condition
         -------
         """
-
-        self.bc = gmsh.model.addPhysicalGroup(
-            self.dim, [self.upper_spline.tag, self.lower_spline.tag]
-        )
+        if self.cut_te:
+            self.bc = gmsh.model.addPhysicalGroup(
+                self.dim, [self.upper_splineL.tag, self.lower_splineL.tag,
+                           self.upper_splineR.tag, self.lower_splineR.tag, self.te_line.tag]
+            )
+        else:
+            self.bc = gmsh.model.addPhysicalGroup(
+                self.dim, [self.upper_spline.tag, self.lower_spline.tag]
+            )
         gmsh.model.setPhysicalName(self.dim, self.bc, self.name)
 
     def rotation(self, angle, origin, axis):

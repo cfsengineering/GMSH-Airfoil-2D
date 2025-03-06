@@ -174,12 +174,19 @@ def main():
         parser.print_help()
         sys.exit()
 
-    # Points need to go clockwise
+    # Make the points all start by the (0,0) (or minimum when not exactly 0) to be easier to deal with after
+    le = min(p[0] for p in cloud_points)
+    for p in cloud_points:
+        if p[0] == le:
+            debut = cloud_points.index(p)
+    cloud_points = cloud_points[debut:]+cloud_points[:debut]
+
+    # Points need to go clockwise (and still start with 0)
+    # (Needed for boundary layer, as is oriented)
     l = len(cloud_points)
-    if cloud_points[0][0] > 0.5 and cloud_points[l//4][1] > 0:
+    if cloud_points[0][0] < 0.5 and cloud_points[l//8][1] < 0:
         cloud_points.reverse()
-    if cloud_points[0][0] < 0.5 and cloud_points[l//4][1] < 0:
-        cloud_points.reverse()
+        cloud_points = cloud_points[l-1:] + cloud_points[:l-1]
 
     # Angle of attack
     aoa = -args.aoa * (math.pi / 180)
