@@ -48,6 +48,7 @@ optional arguments:
                               dat (default su2)
   --cut_te                    Change the trailing edge by cutting the last point (when pointy) to help with
                               boundary layer
+  --structural                Generate a structural mesh
   --output [PATH]             output path for the mesh file (default : current dir)
   --ui                        Open GMSH user interface to see the mesh
 
