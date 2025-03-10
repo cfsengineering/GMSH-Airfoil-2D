@@ -212,7 +212,8 @@ def main():
     gmsh.initialize()
 
     # Airfoil
-    airfoil = AirfoilSpline(cloud_points, args.airfoil_mesh_size, args.cut_te)
+    airfoil = AirfoilSpline(
+        cloud_points, args.airfoil_mesh_size, args.cut_te, args.structural)
     airfoil.rotation(aoa, (0.5, 0, 0), (0, 0, 1))
     airfoil.gen_skin()
     gmsh.model.geo.synchronize()

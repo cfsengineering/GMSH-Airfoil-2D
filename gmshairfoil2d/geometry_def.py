@@ -646,11 +646,12 @@ class AirfoilSpline:
         boundary condition
     """
 
-    def __init__(self, point_cloud, mesh_size, cut_te, name="airfoil"):
+    def __init__(self, point_cloud, mesh_size, cut_te, struct, name="airfoil"):
 
         self.name = name
         self.dim = 1
         self.cut_te = cut_te
+        self.struct = struct
 
         # Generate Points object from the point_cloud
         self.points = [
@@ -670,7 +671,7 @@ class AirfoilSpline:
             sys.exit()
 
         # If we want to cut the trailing edge to put a small circle, we need to find the two points in the end
-        if cut_te:
+        if cut_te and not self.struct:
             # First we check if the airfoil already ends with 2 points vertical of each other
             # (happens in the airfoil from database, ex: hor07), and in this case they are both close to 1
             if self.points[self.te_indx-1].x > 0.9999:
@@ -703,7 +704,7 @@ class AirfoilSpline:
         -------
         """
         # Create the Splines depending on the le and te location in point_cloud
-        if self.cut_te:
+        if self.cut_te and not self.struct:
             # create a spline from the leading edge to the "middle" of the up edge
             self.upper_splineL = Spline(
                 self.points[self.le_indx: self.up_middle_indx + 1])
@@ -771,7 +772,6 @@ class AirfoilSpline:
             #    self.lower_spline = Spline(
             #        self.points[self.te_indx: self.le_indx + 1])
             return self.upper_spline, self.lower_spline
-        # form the curvedloop
 
     def close_loop(self):
         """
@@ -817,13 +817,8 @@ class AirfoilSpline:
         axis : tuple
             tuple of point (x,y,z) which represent the axis of rotation
         """
-        for point in self.points:
-            print(point.x, point.y, point.z)
         [point.rotation(angle, origin, axis) for point in self.points]
         gmsh.model.geo.synchronize()
-        print("And now")
-        for point in self.points:
-            print(point.x, point.y, point.z)
         self.le = self.points[self.le_indx]
         self.te = self.points[self.te_indx]
 
@@ -945,15 +940,8 @@ class CType:
             lower_spline.point_list, key=lambda p: p.x)[:k+1]
         lower_points_front.reverse()
         points_front = lower_points_front[:-1] + upper_points_front
-        for p in points_front:
-            print(p.tag)
         points_front_tag = [point.tag for point in points_front]
         spline_front = gmsh.model.geo.addSpline(points_front_tag)
-
-        print(self.airfoil_spline.te.x,
-              self.airfoil_spline.te.y, self.airfoil_spline.te.z)
-        print(self.airfoil_spline.le.x,
-              self.airfoil_spline.le.y, self.airfoil_spline.le.z)
 
         self.points = [
             Point(0.5, 0, z, self.mesh_size),
