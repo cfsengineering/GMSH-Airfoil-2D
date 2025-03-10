@@ -817,7 +817,15 @@ class AirfoilSpline:
         axis : tuple
             tuple of point (x,y,z) which represent the axis of rotation
         """
+        for point in self.points:
+            print(point.x, point.y, point.z)
         [point.rotation(angle, origin, axis) for point in self.points]
+        gmsh.model.geo.synchronize()
+        print("And now")
+        for point in self.points:
+            print(point.x, point.y, point.z)
+        self.le = self.points[self.le_indx]
+        self.te = self.points[self.te_indx]
 
     def translation(self, vector):
         """
@@ -867,3 +875,221 @@ class PlaneSurface:
         """
         self.ps = gmsh.model.addPhysicalGroup(self.dim, [self.tag])
         gmsh.model.setPhysicalName(self.dim, self.ps, "fluid")
+
+
+def outofbounds(airfoil, box, radius, blthick):
+    """Method that checks if the boundary layer goes out of the box/farfield
+    (which is a problem for meshing later)
+
+    Args:
+        cloud_points (AirfoilSpline): The AirfoilSpline containing the points
+        box (string): the box arguments received by the parser (float x float)
+        radius (float: radius of the farfield (when needed)
+        blthick (float)): total thickness of the boundary layer
+    """
+    if box:
+        length, width = [float(value) for value in box.split("x")]
+        minx = min(p.x for p in airfoil.points)
+        maxx = max(p.x for p in airfoil.points)
+        miny = min(p.y for p in airfoil.points)
+        maxy = max(p.y for p in airfoil.points)
+        if abs(maxx-0.5)+abs(blthick) > length/2 or abs(minx-0.5)+abs(blthick) > length/2 or abs(maxy)+abs(blthick) > width/2 or abs(miny)+abs(blthick) > width/2:
+            print("\nThe boundary layer is bigger than the box, exiting")
+            print(
+                "You must change the boundary layer parameters or choose a bigger box\n")
+            sys.exit()
+    else:
+        maxr2 = max((p.x-0.5)*(p.x-0.5)+p.y*p.y
+                    for p in airfoil.points)
+        if math.sqrt(maxr2)+abs(blthick) > radius:
+            print("\nThe boundary layer is bigger than the circle, exiting")
+            print(
+                "You must change the boundary layer parameters or choose a bigger radius\n")
+            sys.exit()
+
+
+class CType:
+    """
+    A class to represent a C-type structured mesh.
+    """
+
+    def __init__(self, airfoil_spline, dx_lead, dx_trail, dy, mesh_size):
+        z = 0
+        self.airfoil_spline = airfoil_spline
+
+        self.dx_lead = dx_lead
+        self.dx_trail = dx_trail
+        self.dy = dy
+
+        self.mesh_size = mesh_size
+
+        # k smallest element for structured grid inlet line
+        for p in airfoil_spline.points:
+            if p.x > 0.03:
+                k = airfoil_spline.points.index(p)
+                break
+        upper_spline, lower_spline = self.airfoil_spline.gen_skin()
+        self.le_upper_point = sorted(
+            upper_spline.point_list, key=lambda p: p.x)[k]
+        self.le_lower_point = sorted(
+            lower_spline.point_list, key=lambda p: p.x)[k]
+
+        upper_spline_front, upper_spline_back = gmsh.model.geo.splitCurve(
+            upper_spline.tag, [self.le_upper_point.tag])
+        lower_spline_back, lower_spline_front = gmsh.model.geo.splitCurve(
+            lower_spline.tag, [self.le_lower_point.tag])
+
+        upper_points_front = sorted(
+            upper_spline.point_list, key=lambda p: p.x)[:k+1]
+        lower_points_front = sorted(
+            lower_spline.point_list, key=lambda p: p.x)[:k+1]
+        lower_points_front.reverse()
+        points_front = lower_points_front[:-1] + upper_points_front
+        for p in points_front:
+            print(p.tag)
+        points_front_tag = [point.tag for point in points_front]
+        spline_front = gmsh.model.geo.addSpline(points_front_tag)
+
+        print(self.airfoil_spline.te.x,
+              self.airfoil_spline.te.y, self.airfoil_spline.te.z)
+        print(self.airfoil_spline.le.x,
+              self.airfoil_spline.le.y, self.airfoil_spline.le.z)
+
+        self.points = [
+            Point(0.5, 0, z, self.mesh_size),
+            Point(self.airfoil_spline.le.x - self.dx_lead,
+                  self.dy / 2, z, self.mesh_size),
+            Point(self.airfoil_spline.te.x, self.dy / 2, z, self.mesh_size),
+            Point(self.airfoil_spline.te.x + self.dx_trail,
+                  self.dy / 2, z, self.mesh_size),
+            Point(self.airfoil_spline.te.x + self.dx_trail,
+                  self.airfoil_spline.te.y, z, self.mesh_size),
+            Point(self.airfoil_spline.te.x + self.dx_trail, -
+                  self.dy / 2, z, self.mesh_size),
+            Point(self.airfoil_spline.te.x, - self.dy / 2, z, self.mesh_size),
+            Point(self.airfoil_spline.le.x - self.dx_lead, -
+                  self.dy / 2, z, self.mesh_size),
+        ]
+
+        self.lines = [
+            Line(self.le_upper_point, self.points[1]),  # 0
+            Line(self.points[1], self.points[2]),  # 1
+            Line(self.points[2], self.points[3]),  # 2
+            Line(self.points[3], self.points[4]),  # 3
+            Line(self.points[4], self.points[5]),  # 4
+            Line(self.points[5], self.points[6]),  # 5
+            Line(self.points[6], self.points[7]),  # 6
+            Line(self.points[7], self.le_lower_point),  # 7
+            Line(self.airfoil_spline.te, self.points[2]),  # 8
+            Line(self.airfoil_spline.te, self.points[6]),  # 9
+            Line(self.points[4], self.airfoil_spline.te),  # 10
+        ]
+
+        # circle arc for C shape
+        circle_arc = gmsh.model.geo.addCircleArc(
+            self.points[7].tag, self.points[0].tag, self.points[1].tag)
+
+        # planar surfes for structured grid are named from A-E
+        # stright lines are numbered from L0 to L10
+        #
+        #        ------------------------------------
+        #       /   \              L1    |      L2  |
+        #      /     \L0      B          |    C     |       *1 : dx_leading
+        #     /  A    \                L8|          |L3     *2 : dx_wake
+        #    /    *1  /00000000000000\   |   *2     |       *3 : dy
+        #   (    ----(000000000000000000)|----------|
+        #    \        \00000000000000/   |      L10 |*3
+        #     \       /                  |          |
+        #      \     /L7      E        L9|    D     |L4
+        #       \   /                    |          |
+        #        ------------------------------------
+        #                           L6          L5
+
+        # set number of points in y direction
+        nb_points_y = int(self.dy / 2 / self.mesh_size) + 1
+        progression_y = 1.1
+        progression_y_inv = 1/1.1
+
+        # set number of points in x direction at wake
+        nb_points_wake = int(self.dx_trail / self.mesh_size) + 1
+        progression_wake = 0.98
+        progression_wake_inv = 1/0.98
+
+        # set number of points on upper and lower part of airfoil
+        nb_airfoil = 10
+
+        # set number of points on front of airfoil
+        nb_airfoil_front = 20
+
+        # transfinite curve A
+        gmsh.model.geo.mesh.setTransfiniteCurve(
+            self.lines[7].tag, nb_points_y, "Progression", progression_y_inv)  # same for plane E
+        gmsh.model.geo.mesh.setTransfiniteCurve(spline_front, nb_airfoil_front)
+        gmsh.model.geo.mesh.setTransfiniteCurve(
+            self.lines[0].tag, nb_points_y, "Progression", progression_y)  # same for plane B
+        gmsh.model.geo.mesh.setTransfiniteCurve(circle_arc, nb_airfoil_front)
+
+        # transfinite curve B
+        gmsh.model.geo.mesh.setTransfiniteCurve(self.lines[1].tag, nb_airfoil)
+        gmsh.model.geo.mesh.setTransfiniteCurve(
+            self.lines[8].tag, nb_points_y, "Progression", progression_y)  # same for plane C
+        gmsh.model.geo.mesh.setTransfiniteCurve(
+            upper_spline_back, nb_airfoil, "Bump", 0.2)
+
+        # transfinite curve C
+        gmsh.model.geo.mesh.setTransfiniteCurve(
+            self.lines[2].tag, nb_points_wake, "Progression", progression_wake_inv)
+        gmsh.model.geo.mesh.setTransfiniteCurve(
+            self.lines[3].tag, nb_points_y, "Progression", progression_y_inv)
+        gmsh.model.geo.mesh.setTransfiniteCurve(
+            self.lines[10].tag, nb_points_wake, "Progression", progression_wake)  # same for plane D
+
+        # transfinite curve D
+        gmsh.model.geo.mesh.setTransfiniteCurve(
+            self.lines[9].tag, nb_points_y, "Progression", progression_y)  # same for plane E
+        gmsh.model.geo.mesh.setTransfiniteCurve(
+            self.lines[4].tag, nb_points_y, "Progression", progression_y)
+        gmsh.model.geo.mesh.setTransfiniteCurve(
+            self.lines[5].tag, nb_points_wake, "Progression", progression_wake)
+
+        # transfinite curve E
+        gmsh.model.geo.mesh.setTransfiniteCurve(
+            lower_spline_back, nb_airfoil, "Bump", 0.2)
+        gmsh.model.geo.mesh.setTransfiniteCurve(self.lines[6].tag, nb_airfoil)
+
+        # transfinite surface A (forces structured mesh)
+        gmsh.model.geo.addCurveLoop(
+            [self.lines[7].tag, spline_front, self.lines[0].tag, - circle_arc], 1)
+        gmsh.model.geo.addPlaneSurface([1], 1)
+        gmsh.model.geo.mesh.setTransfiniteSurface(1)
+
+        # transfinite surface B
+        gmsh.model.geo.addCurveLoop(
+            [self.lines[0].tag, self.lines[1].tag, - self.lines[8].tag, - upper_spline_back], 2)
+        gmsh.model.geo.addPlaneSurface([2], 2)
+        gmsh.model.geo.mesh.setTransfiniteSurface(2)
+
+        # transfinite surface C
+        gmsh.model.geo.addCurveLoop(
+            [self.lines[8].tag, self.lines[2].tag, self.lines[3].tag, self.lines[10].tag], 3)
+        gmsh.model.geo.addPlaneSurface([3], 3)
+        gmsh.model.geo.mesh.setTransfiniteSurface(3)
+
+        # transfinite surface D
+        gmsh.model.geo.addCurveLoop(
+            [- self.lines[9].tag, - self.lines[10].tag, self.lines[4].tag, self.lines[5].tag], 4)
+        gmsh.model.geo.addPlaneSurface([4], 4)
+        gmsh.model.geo.mesh.setTransfiniteSurface(4)
+
+        # transfinite surface E
+        gmsh.model.geo.addCurveLoop(
+            [self.lines[7].tag, - lower_spline_back, self.lines[9].tag, self.lines[6].tag], 5)
+        gmsh.model.geo.addPlaneSurface([5], 5)
+        gmsh.model.geo.mesh.setTransfiniteSurface(5)
+
+        # recombine surface to create quadrilateral elements
+        gmsh.model.geo.mesh.setRecombine(2, 1, 90)
+        gmsh.model.geo.mesh.setRecombine(2, 2, 90)
+        gmsh.model.geo.mesh.setRecombine(2, 3, 90)
+        gmsh.model.geo.mesh.setRecombine(2, 4, 90)
+        gmsh.model.geo.mesh.setRecombine(2, 5, 90)

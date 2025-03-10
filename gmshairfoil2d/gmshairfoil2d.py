@@ -11,7 +11,7 @@ import gmsh
 from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_points,
                                         get_all_available_airfoil_names)
 from gmshairfoil2d.geometry_def import (AirfoilSpline, Circle, PlaneSurface,
-                                        Rectangle, CurveLoop)
+                                        Rectangle, CurveLoop, outofbounds, CType)
 
 
 def main():
@@ -132,6 +132,23 @@ def main():
         action="store_true",
         help="Change the trailing edge by cutting the last point to help with boundary layer",
     )
+    parser.add_argument(
+        "--structural",
+        action="store_true",
+        help="Generate a structural mesh",
+    )
+    parser.add_argument(
+        "--arg_struc",
+        type=str,
+        metavar="LENGTHxLENGTHxLENGTH",
+        default="1x10x10",
+        help="Parameters for the structural mesh [leading (axis x)]x[wake (axis x)]x[total height (axis y)] [m] (default 1x10x10)",
+    )
+    parser.add_argument(
+        "--extrude",
+        action="store_true",
+        help="Change the method to obtain the boundary layer (the extrude one is usually less efficient for weird shapes)",
+    )
 
     parser.add_argument(
         "--output",
@@ -184,7 +201,7 @@ def main():
     # Points need to go clockwise (and still start with 0)
     # (Needed for boundary layer, as is oriented)
     l = len(cloud_points)
-    if cloud_points[1][1] < 0:
+    if cloud_points[1][1] < cloud_points[0][1]:
         cloud_points.reverse()
         cloud_points = cloud_points[l-1:] + cloud_points[:l-1]
 
@@ -200,71 +217,90 @@ def main():
     airfoil.gen_skin()
     gmsh.model.geo.synchronize()
 
-    if args.no_bl:  # just want normal mesh, define the interior boundary as the airfoil
-        boundary_middle = airfoil
+    if args.structural:
+        dx_lead, dx_wake, dy = [float(value)
+                                for value in args.arg_struc.split("x")]
+        ext_domain = CType(airfoil, dx_lead, dx_wake, dy,
+                           args.ext_mesh_size)  # , args.airfoil_mesh_size)
     else:
-        # Create a boundary layer
+        if args.no_bl:  # just want normal mesh, define the interior boundary as the airfoil
+            boundary_middle = airfoil
+        else:
+            # Create a boundary layer
+            # Choose the parameters
+            N = args.nb_layers
+            r = args.ratio_bl
+            if args.extrude:
+                d = [-args.first_layer]
+            else:
+                d = [args.first_layer]
+            # Construct the vector of cumulative distance of each layer from airfoil
+            for i in range(1, N):
+                d.append(d[-1] - (-d[0]) * r**i)
 
-        # Choose the parameters
-        N = args.nb_layers
-        r = args.ratio_bl
-        d = [-args.first_layer]
-        # Construct the vector of cumulative distance of each layer from airfoil
-        for i in range(1, N):
-            d.append(d[-1] - (-d[0]) * r**i)
+            # Need to check that the layers do not go outside the box/circle
+            outofbounds(airfoil, args.box, args.farfield, d[-1])
 
-        # Need to check that the layers do not go outside the box/circle
+            if args.extrude:
+                # Function that does the boundary layer
+                extbl_tags = gmsh.model.geo.extrudeBoundaryLayer(
+                    gmsh.model.getEntities(1), [1] * N, d, True)
+                gmsh.model.geo.synchronize()
+
+                # Create curve loop with "top" curves of the boundary layer, to define the rest of the mesh
+                # (use ::2 bc once every two in extbl_tags there is a surface that we don't want. Only want lines. Somehow if with geo we must put every 4? Still don't understand but works)
+                boundary_middle = CurveLoop([c[1] for c in extbl_tags[::4]])
+                gmsh.model.geo.synchronize()
+            else:
+                boundary_middle = airfoil
+
+        # External domain
         if args.box:
             length, width = [float(value) for value in args.box.split("x")]
-            minx = min(p[0] for p in cloud_points)
-            maxx = max(p[0] for p in cloud_points)
-            miny = min(p[1] for p in cloud_points)
-            maxy = max(p[1] for p in cloud_points)
-            if abs(maxx-0.5)+abs(d[-1]) > length/2 or abs(minx-0.5)+abs(d[-1]) > length/2 or abs(maxy)+abs(d[-1]) > width/2 or abs(miny)+abs(d[-1]) > width/2:
-                print("\nThe boundary layer is bigger than the box, exiting")
-                print(
-                    "You must change the boundary layer parameters or choose a bigger box\n")
-                sys.exit()
+            ext_domain = Rectangle(0.5, 0, 0, length, width,
+                                   mesh_size=args.ext_mesh_size)
         else:
-            radius = args.farfield
-            maxr2 = max((p[0]-0.5)*(p[0]-0.5)+p[1]*p[1] for p in cloud_points)
-            if math.sqrt(maxr2)-d[-1] > radius:
-                print("\nThe boundary layer is bigger than the circle, exiting")
-                print(
-                    "You must change the boundary layer parameters or choose a bigger radius\n")
-                sys.exit()
+            ext_domain = Circle(0.5, 0, 0, radius=args.farfield,
+                                mesh_size=args.ext_mesh_size)
 
-        # Function that does the boundary layer
-        extbl_tags = gmsh.model.geo.extrudeBoundaryLayer(
-            gmsh.model.getEntities(1), [1] * N, d, True)
         gmsh.model.geo.synchronize()
 
-        # Create curve loop with "top" curves of the boundary layer, to define the rest of the mesh
-        # (use ::2 bc once every two in extbl_tags there is a surface that we don't want. Only want lines. Somehow if with geo we must put every 4? Still don't understand but works)
-        boundary_middle = CurveLoop([c[1] for c in extbl_tags[::4]])
+        # Create the surface for the triangular mesh
+        surface = PlaneSurface([ext_domain, boundary_middle])
         gmsh.model.geo.synchronize()
 
-    # External domain
-    if args.box:
-        length, width = [float(value) for value in args.box.split("x")]
-        ext_domain = Rectangle(0.5, 0, 0, length, width,
-                               mesh_size=args.ext_mesh_size)
-    else:
-        ext_domain = Circle(0.5, 0, 0, radius=args.farfield,
-                            mesh_size=args.ext_mesh_size)
+        # Set the boundary layer, when done with second method
+        if not args.extrude and not args.no_bl:
+
+            if args.cut_te:
+                curv = [airfoil.upper_splineL.tag, airfoil.upper_splineR.tag,
+                        airfoil.te_line.tag, airfoil.lower_splineR.tag, airfoil.lower_splineL.tag]
+            else:
+                curv = [airfoil.upper_spline.tag,  airfoil.lower_spline.tag]
+
+            # Creates a new mesh field of type 'BoundaryLayer' and assigns it an ID (f).
+            f = gmsh.model.mesh.field.add('BoundaryLayer')
+
+            # Add the curves where we apply the boundary layer (around the airfoil for us)
+            gmsh.model.mesh.field.setNumbers(f, 'CurvesList', curv)
+            gmsh.model.mesh.field.setNumber(f, 'Size', d[0])  # size 1st layer
+            gmsh.model.mesh.field.setNumber(f, 'Ratio', r)  # Growth ratio
+
+            # Forces to use quads and not triangle when =1 (i.e. true)
+            gmsh.model.mesh.field.setNumber(f, 'Quads', 1)
+
+            # Total thickness of boundary layer (instead of nb of layer as before)
+            gmsh.model.mesh.field.setNumber(f, 'Thickness', d[-1])
+
+            gmsh.model.mesh.field.setAsBoundaryLayer(f)
+
+        # Define boundary conditions (name the curves)
+        ext_domain.define_bc()
+        surface.define_bc()
+        airfoil.define_bc()
+        boundary_middle.define_bc()
 
     gmsh.model.geo.synchronize()
-
-    # Create the surface for the triangular mesh
-    surface = PlaneSurface([ext_domain, boundary_middle])
-    gmsh.model.geo.synchronize()
-
-    # Define boundary conditions (name the curves)
-    ext_domain.define_bc()
-    surface.define_bc()
-    airfoil.define_bc()
-    boundary_middle.define_bc()
-
     # Generate mesh
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
