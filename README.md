@@ -49,6 +49,8 @@ optional arguments:
   --cut_te                    Change the trailing edge by cutting the last point (when pointy) to help with
                               boundary layer
   --structural                Generate a structural mesh
+  --arg_struc                 Parameters for the structural mesh [leading (axis x)]x[wake
+      [LENGTHxLENGTHxLENGTH]  (axis x)]x[total height (axis y)] [m] (default 1x10x10)
   --output [PATH]             output path for the mesh file (default : current dir)
   --ui                        Open GMSH user interface to see the mesh
 
