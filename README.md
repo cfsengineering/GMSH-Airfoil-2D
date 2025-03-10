@@ -51,6 +51,8 @@ optional arguments:
   --structural                Generate a structural mesh
   --arg_struc                 Parameters for the structural mesh [leading (axis x)]x[wake
       [LENGTHxLENGTHxLENGTH]  (axis x)]x[total height (axis y)] [m] (default 1x10x10)
+  --extrude                   Change the method to obtain the boundary layer (the extrude one
+                              is usually worse for weird shapes)
   --output [PATH]             output path for the mesh file (default : current dir)
   --ui                        Open GMSH user interface to see the mesh
 
