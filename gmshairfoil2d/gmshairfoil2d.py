@@ -127,16 +127,7 @@ def main():
         default="su2",
         help="Format of the mesh file, e.g: msh, vtk, wrl, stl, mesh, cgns, su2, dat (default su2)",
     )
-    parser.add_argument(
-        "--cut_te",
-        action="store_true",
-        help="Change the trailing edge by cutting the last point to make a trailing edge circular boundary layer",
-    )
-    parser.add_argument(
-        "--cut_te_line",
-        action="store_true",
-        help="Change the trailing edge by cutting the last point to make a trailing edge with unstructured mesh",
-    )
+
     parser.add_argument(
         "--structural",
         action="store_true",
@@ -148,11 +139,6 @@ def main():
         metavar="LENGTHxLENGTHxLENGTH",
         default="1x10x10",
         help="Parameters for the structural mesh [leading (axis x)]x[wake (axis x)]x[total height (axis y)] [m] (default 1x10x10)",
-    )
-    parser.add_argument(
-        "--extrude",
-        action="store_true",
-        help="Change the method to obtain the boundary layer (the extrude one is usually worse for weird shapes)",
     )
 
     parser.add_argument(
@@ -169,7 +155,6 @@ def main():
         action="store_true",
         help="Open GMSH user interface to see the mesh",
     )
-
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
@@ -204,12 +189,9 @@ def main():
     cloud_points = cloud_points[debut:]+cloud_points[:debut]
 
     # Points need to go clockwise (and still start with 0)
-    # (Needed for boundary layer, as is oriented)
     if cloud_points[1][1] < cloud_points[0][1]:
         cloud_points.reverse()
         cloud_points = cloud_points[-1:] + cloud_points[:-1]
-
-    print(cloud_points)
 
     # Angle of attack
     aoa = -args.aoa * (math.pi / 180)
@@ -219,7 +201,7 @@ def main():
 
     # Airfoil
     airfoil = AirfoilSpline(
-        cloud_points, args.airfoil_mesh_size, args.cut_te, args.structural, args.cut_te_line)
+        cloud_points, args.airfoil_mesh_size, args.structural)
     airfoil.rotation(aoa, (0.5, 0, 0), (0, 0, 1))
     airfoil.gen_skin()
     gmsh.model.geo.synchronize()
@@ -228,43 +210,19 @@ def main():
         dx_lead, dx_wake, dy = [float(value)
                                 for value in args.arg_struc.split("x")]
         ext_domain = CType(airfoil, dx_lead, dx_wake, dy,
-                           args.ext_mesh_size, args.airfoil_mesh_size, args.first_layer, args.ratio)
+                           args.ext_mesh_size, args.first_layer, args.ratio)
     else:
-        if args.no_bl:  # just want normal mesh, define the interior boundary as the airfoil
-            boundary_middle = airfoil
-        else:
-            # Create a boundary layer
-            # Choose the parameters
-            N = args.nb_layers
-            r = args.ratio
-            if args.extrude:
-                d = [-args.first_layer]
-            else:
-                d = [args.first_layer]
-            # Construct the vector of cumulative distance of each layer from airfoil
-            for i in range(1, N):
-                d.append(d[-1] - (-d[0]) * r**i)
+        # Create a boundary layer
+        # Choose the parameters
+        N = args.nb_layers
+        r = args.ratio
+        d = [args.first_layer]
+        # Construct the vector of cumulative distance of each layer from airfoil
+        for i in range(1, N):
+            d.append(d[-1] - (-d[0]) * r**i)
 
-            # Need to check that the layers do not go outside the box/circle (d[-1] is the total height of bl)
-            outofbounds(airfoil, args.box, args.farfield, d[-1])
-
-            if args.extrude:
-                # Function that does the boundary layer
-                extbl_tags = gmsh.model.geo.extrudeBoundaryLayer(
-                    gmsh.model.getEntities(1), [1] * N, d, True)
-                gmsh.model.geo.synchronize()
-                print(extbl_tags)
-                newpoints = [c[1] for c in extbl_tags[::4]]
-                for p in newpoints:
-                    [x, y, z] = gmsh.model.getValue(0, p, [0])
-                    print("(", x, y, z, ")", p)
-
-                # Create curve loop with "top" curves of the boundary layer, to define the rest of the mesh
-                # (use ::2 bc once every two in extbl_tags there is a surface that we don't want. Only want lines. Somehow if with geo we must put every 4? Still don't understand but works)
-                boundary_middle = CurveLoop([c[1] for c in extbl_tags[::4]])
-                gmsh.model.geo.synchronize()
-            else:
-                boundary_middle = airfoil
+        # Need to check that the layers do not go outside the box/circle (d[-1] is the total height of bl)
+        outofbounds(airfoil, args.box, args.farfield, d[-1])
 
         # External domain
         if args.box:
@@ -277,17 +235,11 @@ def main():
         gmsh.model.geo.synchronize()
 
         # Create the surface for the triangular mesh
-        surface = PlaneSurface([ext_domain, boundary_middle])
+        surface = PlaneSurface([ext_domain, airfoil])
         gmsh.model.geo.synchronize()
 
-        # Set the boundary layer, when done with second method
-        if not args.extrude and not args.no_bl:
-
-            if args.cut_te:
-                curv = [airfoil.upper_splineL.tag, airfoil.upper_splineR.tag,
-                        airfoil.te_circle.tag, airfoil.lower_splineR.tag, airfoil.lower_splineL.tag]
-            else:  # when cut in line, do not want mesh on it
-                curv = [airfoil.upper_spline.tag,  airfoil.lower_spline.tag]
+        if not args.no_bl:
+            curv = [airfoil.upper_spline.tag,  airfoil.lower_spline.tag]
 
             # Creates a new mesh field of type 'BoundaryLayer' and assigns it an ID (f).
             f = gmsh.model.mesh.field.add('BoundaryLayer')
@@ -311,7 +263,6 @@ def main():
         ext_domain.define_bc()
         surface.define_bc()
         airfoil.define_bc()
-        boundary_middle.define_bc()
 
     gmsh.model.geo.synchronize()
 
