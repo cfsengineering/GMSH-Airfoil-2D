@@ -335,7 +335,6 @@ class Circle:
                       math.sin(angle), self.zc, realmeshsize)
             points.append(p)
         points.append(points[0])
-        print(self.distribution, (np.pi * 2 * self.radius)/self.distribution)
         # create arcs between two neighbouring points to create circle
         self.arcCircle_list = [
             gmsh.model.geo.addCircleArc(
@@ -959,8 +958,6 @@ class CType:
         # set number of points on front of airfoil
         # First compute radius of circle
         r = math.sqrt(dy*dy/4+(0.5+dx_lead)*(0.5+dx_lead))
-        print(dy, 0.5+dx_lead, r, (180-20*dx_lead),
-              r*(180-20*dx_lead)/360*2*math.pi)
         nb_airfoil_front = max(int(r/2*(180-20*min(dx_lead, 8))/360 /
                                ext_mesh_size*2*math.pi)+1, 7+int(r/4*(180-20*min(dx_lead, 8))/360 /
                                ext_mesh_size*2*math.pi))
