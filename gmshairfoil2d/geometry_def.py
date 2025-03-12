@@ -633,7 +633,7 @@ class AirfoilSpline:
 
         # Check if the airfoil end in a single point, or with two different points (vertical of each other)
         vertical = False
-        # If both are so close to one, they are vertical and not just neighbouring point (bc te is always to 1)
+        # If both are so close to one, they are vertical and not just neighbouring point (bc te is always 1)
         # Just need to check if the one before or after and then label them correctly
         if self.points[self.te_indx-1].x > 0.9999:
             te_up_indx = self.te_indx-1
@@ -652,6 +652,8 @@ class AirfoilSpline:
             a, b, c, d = x - self.points[te_up_indx-1].x, y-self.points[te_up_indx -
                                                                         1].y, z-self.points[te_down_indx+1].x, w-self.points[te_down_indx+1].y
             #
+            # We have that (x,y) are the coordinates of te_up and (z,w) the coordinates of te_down
+            # p1 is the point before te_up and p2 the point after te _down
             #      \
             #       . p1
             #        \ vector from p1 to (x,y) is (a,b)
