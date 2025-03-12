@@ -84,13 +84,13 @@ def main():
         metavar="SIZE",
         nargs="?",
         default=0.2,
-        help="Mesh size of the external domain [m] (default 0.2m)",
+        help="Mesh size of the external domain [m] (default 0.2m) (for normal, bl and structural)",
     )
 
     parser.add_argument(
         "--no_bl",
         action="store_true",
-        help="Do the meshing without a boundary layer (made with quads)",
+        help="Do the unstructured meshing, without a boundary layer (made with quads)",
     )
 
     parser.add_argument(
@@ -99,16 +99,16 @@ def main():
         metavar="HEIGHT",
         nargs="?",
         default=3e-5,
-        help="Height of the first layer [m] (default 3e-5m)",
+        help="Height of the first layer [m] (default 3e-5m) (boundary layer or structural mesh)",
     )
 
     parser.add_argument(
-        "--ratio_bl",
+        "--ratio",
         type=float,
         metavar="RATIO",
         nargs="?",
         default=1.2,
-        help="Growth ratio for the boundary layer (default 1.2)",
+        help="Growth ratio for the boundary layer (default 1.2) or structural mesh",
     )
 
     parser.add_argument(
@@ -130,7 +130,12 @@ def main():
     parser.add_argument(
         "--cut_te",
         action="store_true",
-        help="Change the trailing edge by cutting the last point to help with boundary layer",
+        help="Change the trailing edge by cutting the last point to make a trailing edge circular boundary layer",
+    )
+    parser.add_argument(
+        "--cut_te_line",
+        action="store_true",
+        help="Change the trailing edge by cutting the last point to make a trailing edge with unstructured mesh",
     )
     parser.add_argument(
         "--structural",
@@ -147,7 +152,7 @@ def main():
     parser.add_argument(
         "--extrude",
         action="store_true",
-        help="Change the method to obtain the boundary layer (the extrude one is usually less efficient for weird shapes)",
+        help="Change the method to obtain the boundary layer (the extrude one is usually worse for weird shapes)",
     )
 
     parser.add_argument(
@@ -191,7 +196,7 @@ def main():
         parser.print_help()
         sys.exit()
 
-    # Make the points all start by the (0,0) (or minimum when not exactly 0) to be easier to deal with after
+    # Make the points all start by the (0,0) (or minimum of coord x when not exactly 0) to be easier to deal with after
     le = min(p[0] for p in cloud_points)
     for p in cloud_points:
         if p[0] == le:
@@ -200,10 +205,11 @@ def main():
 
     # Points need to go clockwise (and still start with 0)
     # (Needed for boundary layer, as is oriented)
-    l = len(cloud_points)
     if cloud_points[1][1] < cloud_points[0][1]:
         cloud_points.reverse()
-        cloud_points = cloud_points[l-1:] + cloud_points[:l-1]
+        cloud_points = cloud_points[-1:] + cloud_points[:-1]
+
+    print(cloud_points)
 
     # Angle of attack
     aoa = -args.aoa * (math.pi / 180)
@@ -213,7 +219,7 @@ def main():
 
     # Airfoil
     airfoil = AirfoilSpline(
-        cloud_points, args.airfoil_mesh_size, args.cut_te, args.structural)
+        cloud_points, args.airfoil_mesh_size, args.cut_te, args.structural, args.cut_te_line)
     airfoil.rotation(aoa, (0.5, 0, 0), (0, 0, 1))
     airfoil.gen_skin()
     gmsh.model.geo.synchronize()
@@ -222,7 +228,7 @@ def main():
         dx_lead, dx_wake, dy = [float(value)
                                 for value in args.arg_struc.split("x")]
         ext_domain = CType(airfoil, dx_lead, dx_wake, dy,
-                           args.ext_mesh_size)  # , args.airfoil_mesh_size)
+                           args.ext_mesh_size, args.airfoil_mesh_size, args.first_layer, args.ratio)
     else:
         if args.no_bl:  # just want normal mesh, define the interior boundary as the airfoil
             boundary_middle = airfoil
@@ -230,7 +236,7 @@ def main():
             # Create a boundary layer
             # Choose the parameters
             N = args.nb_layers
-            r = args.ratio_bl
+            r = args.ratio
             if args.extrude:
                 d = [-args.first_layer]
             else:
@@ -239,7 +245,7 @@ def main():
             for i in range(1, N):
                 d.append(d[-1] - (-d[0]) * r**i)
 
-            # Need to check that the layers do not go outside the box/circle
+            # Need to check that the layers do not go outside the box/circle (d[-1] is the total height of bl)
             outofbounds(airfoil, args.box, args.farfield, d[-1])
 
             if args.extrude:
@@ -247,6 +253,11 @@ def main():
                 extbl_tags = gmsh.model.geo.extrudeBoundaryLayer(
                     gmsh.model.getEntities(1), [1] * N, d, True)
                 gmsh.model.geo.synchronize()
+                print(extbl_tags)
+                newpoints = [c[1] for c in extbl_tags[::4]]
+                for p in newpoints:
+                    [x, y, z] = gmsh.model.getValue(0, p, [0])
+                    print("(", x, y, z, ")", p)
 
                 # Create curve loop with "top" curves of the boundary layer, to define the rest of the mesh
                 # (use ::2 bc once every two in extbl_tags there is a surface that we don't want. Only want lines. Somehow if with geo we must put every 4? Still don't understand but works)
@@ -263,7 +274,6 @@ def main():
         else:
             ext_domain = Circle(0.5, 0, 0, radius=args.farfield,
                                 mesh_size=args.ext_mesh_size)
-
         gmsh.model.geo.synchronize()
 
         # Create the surface for the triangular mesh
@@ -275,8 +285,8 @@ def main():
 
             if args.cut_te:
                 curv = [airfoil.upper_splineL.tag, airfoil.upper_splineR.tag,
-                        airfoil.te_line.tag, airfoil.lower_splineR.tag, airfoil.lower_splineL.tag]
-            else:
+                        airfoil.te_circle.tag, airfoil.lower_splineR.tag, airfoil.lower_splineL.tag]
+            else:  # when cut in line, do not want mesh on it
                 curv = [airfoil.upper_spline.tag,  airfoil.lower_spline.tag]
 
             # Creates a new mesh field of type 'BoundaryLayer' and assigns it an ID (f).
@@ -292,6 +302,8 @@ def main():
 
             # Total thickness of boundary layer (instead of nb of layer as before)
             gmsh.model.mesh.field.setNumber(f, 'Thickness', d[-1])
+            gmsh.model.mesh.field.setNumbers(
+                f, "FanPointsList", [airfoil.te.tag])
 
             gmsh.model.mesh.field.setAsBoundaryLayer(f)
 
@@ -302,7 +314,9 @@ def main():
         boundary_middle.define_bc()
 
     gmsh.model.geo.synchronize()
+
     # Generate mesh
+    gmsh.option.setNumber("Mesh.BoundaryLayerFanElements", 15)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
     gmsh.model.mesh.generate(2)

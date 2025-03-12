@@ -639,18 +639,23 @@ class AirfoilSpline:
         attribute given for the class Point,Note that a mesh size larger
         than the resolution given by the cloud of points
         will not be taken into account
-    cut_te: bool
-        attribute given to hold true when we want a cute trailing edge, instead of a pointy one
+    cut_te_round: bool
+        attribute given to hold true when we want a cute trailing edge with a half-circle, instead of a pointy one
     name : str
         name of the marker that will be associated to the airfoil
         boundary condition
+    struc : bool
+        Hold true if mesh is structural
+    cut_te_line: bool
+        attribute given to hold true when we want a cute trailing edge, instead of a pointy one
     """
 
-    def __init__(self, point_cloud, mesh_size, cut_te, struct, name="airfoil"):
+    def __init__(self, point_cloud, mesh_size, cut_te_round, struct, cut_te_line, name="airfoil"):
 
         self.name = name
         self.dim = 1
-        self.cut_te = cut_te
+        self.cut_te_round = cut_te_round
+        self.cut_te_line = cut_te_line
         self.struct = struct
 
         # Generate Points object from the point_cloud
@@ -671,7 +676,7 @@ class AirfoilSpline:
             sys.exit()
 
         # If we want to cut the trailing edge to put a small circle, we need to find the two points in the end
-        if cut_te and not self.struct:
+        if (cut_te_round or cut_te_line) and not self.struct:
             # First we check if the airfoil already ends with 2 points vertical of each other
             # (happens in the airfoil from database, ex: hor07), and in this case they are both close to 1
             if self.points[self.te_indx-1].x > 0.9999:
@@ -704,7 +709,7 @@ class AirfoilSpline:
         -------
         """
         # Create the Splines depending on the le and te location in point_cloud
-        if self.cut_te and not self.struct:
+        if self.cut_te_round and not self.struct:
             # create a spline from the leading edge to the "middle" of the up edge
             self.upper_splineL = Spline(
                 self.points[self.le_indx: self.up_middle_indx + 1])
@@ -724,11 +729,11 @@ class AirfoilSpline:
             x2 = self.points[self.te_down_indx].x
             y1 = self.points[self.te_up_indx].y
             y2 = self.points[self.te_down_indx].y
-            self.te_line = CircleArc(
+            self.te_circle = CircleArc(
                 (x1+x2)/2+(y2-y1)/10, (y1+y2)/2+(x1-x2)/10, 0,
                 self.points[self.te_up_indx], self.points[self.te_down_indx], self.points[0].mesh_size)
 
-            gmsh.model.geo.mesh.setTransfiniteCurve(self.te_line.tag, 10)
+            gmsh.model.geo.mesh.setTransfiniteCurve(self.te_circle.tag, 10)
 
             x3 = self.points[self.up_middle_indx].x
             x4 = self.points[self.down_middle_indx].x
@@ -750,9 +755,18 @@ class AirfoilSpline:
             gmsh.model.geo.mesh.setTransfiniteCurve(
                 self.lower_splineR.tag, N2, meshType="Progression", coef=r2)
 
-            return self.upper_splineL, self.upper_splineR, self.te_line, self.lower_splineR, self.lower_splineL
+            return self.upper_splineL, self.upper_splineR, self.te_circle, self.lower_splineR, self.lower_splineL
+        elif self.cut_te_line and not self.struct:
+            self.upper_spline = Spline(
+                self.points[self.le_indx: self.te_up_indx+1])
+            self.lower_spline = Spline(
+                self.points[self.te_down_indx:] +
+                self.points[: (self.le_indx) + 1]
+            )
+            self.te_line = Line(
+                self.points[self.te_up_indx], self.points[self.te_down_indx])
+            return self.upper_spline, self.lower_spline, self.te_line
         else:
-            # if self.le_indx < self.te_indx:
             # create a spline from the leading edge to the trailing edge
             self.upper_spline = Spline(
                 self.points[self.le_indx: self.te_indx + 1])
@@ -761,16 +775,6 @@ class AirfoilSpline:
                 self.points[self.te_indx:] +
                 self.points[: (self.le_indx) + 1]
             )
-
-            # else:
-            #    # create a spline from the leading edge to the trailing edge
-            #    self.upper_spline = Spline(
-            #        self.points[self.le_indx:] +
-            #        self.points[: (self.te_indx + 1)]
-            #    )
-            #    # create a spline from the trailing edge to the leading edge
-            #    self.lower_spline = Spline(
-            #        self.points[self.te_indx: self.le_indx + 1])
             return self.upper_spline, self.lower_spline
 
     def close_loop(self):
@@ -782,8 +786,10 @@ class AirfoilSpline:
         _ : int
             return the tag of the CurveLoop object
         """
-        if self.cut_te:
-            return CurveLoop([self.upper_splineL, self.upper_splineR, self.te_line, self.lower_splineR, self.lower_splineL]).tag
+        if self.cut_te_round and not self.struct:
+            return CurveLoop([self.upper_splineL, self.upper_splineR, self.te_circle, self.lower_splineR, self.lower_splineL]).tag
+        elif self.cut_te_line and not self.struct:
+            return CurveLoop([self.upper_spline, self.te_line, self.lower_spline]).tag
         else:
             return CurveLoop([self.upper_spline, self.lower_spline]).tag
 
@@ -792,10 +798,15 @@ class AirfoilSpline:
         Method that define the marker of the airfoil for the boundary condition
         -------
         """
-        if self.cut_te:
+        if self.cut_te_round and not self.struct:
             self.bc = gmsh.model.addPhysicalGroup(
                 self.dim, [self.upper_splineL.tag, self.lower_splineL.tag,
-                           self.upper_splineR.tag, self.lower_splineR.tag, self.te_line.tag]
+                           self.upper_splineR.tag, self.lower_splineR.tag, self.te_circle.tag]
+            )
+        elif self.cut_te_line and not self.struct:
+            self.bc = gmsh.model.addPhysicalGroup(
+                self.dim, [self.upper_spline.tag,
+                           self.te_line.tag, self.lower_spline.tag]
             )
         else:
             self.bc = gmsh.model.addPhysicalGroup(
@@ -879,8 +890,8 @@ def outofbounds(airfoil, box, radius, blthick):
     Args:
         cloud_points (AirfoilSpline): The AirfoilSpline containing the points
         box (string): the box arguments received by the parser (float x float)
-        radius (float: radius of the farfield (when needed)
-        blthick (float)): total thickness of the boundary layer
+        radius (float): radius of the farfield (when needed)
+        blthick (float): total thickness of the boundary layer
     """
     if box:
         length, width = [float(value) for value in box.split("x")]
@@ -908,7 +919,7 @@ class CType:
     A class to represent a C-type structured mesh.
     """
 
-    def __init__(self, airfoil_spline, dx_lead, dx_trail, dy, mesh_size):
+    def __init__(self, airfoil_spline, dx_lead, dx_trail, dy, ext_mesh_size, airfoilmesh, height, ratio):
         z = 0
         self.airfoil_spline = airfoil_spline
 
@@ -916,24 +927,25 @@ class CType:
         self.dx_trail = dx_trail
         self.dy = dy
 
-        self.mesh_size = mesh_size
+        self.mesh_size = ext_mesh_size
 
-        # k smallest element for structured grid inlet line
+        # k smallest element for structured grid inlet line. First compute k
         for p in airfoil_spline.points:
             if p.x > 0.03:
                 k = airfoil_spline.points.index(p)
                 break
+        # Then split the splines, and order by coordinate x
         upper_spline, lower_spline = self.airfoil_spline.gen_skin()
         self.le_upper_point = sorted(
             upper_spline.point_list, key=lambda p: p.x)[k]
         self.le_lower_point = sorted(
             lower_spline.point_list, key=lambda p: p.x)[k]
-
         upper_spline_front, upper_spline_back = gmsh.model.geo.splitCurve(
             upper_spline.tag, [self.le_upper_point.tag])
         lower_spline_back, lower_spline_front = gmsh.model.geo.splitCurve(
             lower_spline.tag, [self.le_lower_point.tag])
 
+        # Create the new front spline
         upper_points_front = sorted(
             upper_spline.point_list, key=lambda p: p.x)[:k+1]
         lower_points_front = sorted(
@@ -943,6 +955,7 @@ class CType:
         points_front_tag = [point.tag for point in points_front]
         spline_front = gmsh.model.geo.addSpline(points_front_tag)
 
+        # Create points on the outside domain (& center point)
         self.points = [
             Point(0.5, 0, z, self.mesh_size),
             Point(self.airfoil_spline.le.x - self.dx_lead,
@@ -959,6 +972,7 @@ class CType:
                   self.dy / 2, z, self.mesh_size),
         ]
 
+        # Create all the lines : outside and surface separation
         self.lines = [
             Line(self.le_upper_point, self.points[1]),  # 0
             Line(self.points[1], self.points[2]),  # 1
@@ -973,16 +987,16 @@ class CType:
             Line(self.points[4], self.airfoil_spline.te),  # 10
         ]
 
-        # circle arc for C shape
+        # Circle arc for C shape at the front
         circle_arc = gmsh.model.geo.addCircleArc(
             self.points[7].tag, self.points[0].tag, self.points[1].tag)
 
-        # planar surfes for structured grid are named from A-E
-        # stright lines are numbered from L0 to L10
+        # planar surfaces for structured grid are named from A-E
+        # straight lines are numbered from L0 to L10
         #
         #        ------------------------------------
         #       /   \              L1    |      L2  |
-        #      /     \L0      B          |    C     |       *1 : dx_leading
+        # circ /     \L0      B          |    C     |       *1 : dx_leading
         #     /  A    \                L8|          |L3     *2 : dx_wake
         #    /    *1  /00000000000000\   |   *2     |       *3 : dy
         #   (    ----(000000000000000000)|----------|
@@ -991,12 +1005,13 @@ class CType:
         #      \     /L7      E        L9|    D     |L4
         #       \   /                    |          |
         #        ------------------------------------
-        #                           L6          L5
+        #                      L6               L5
 
-        # set number of points in y direction
-        nb_points_y = int(self.dy / 2 / self.mesh_size) + 1
-        progression_y = 1.1
-        progression_y_inv = 1/1.1
+        # Compute number of nodes needed to have the desired first layer height (=nb of layer +1)(on half height)
+        # int(self.dy / 2 / self.mesh_size) + 1 //// old way
+        nb_points_y = 3+int(math.log(1+dy/2/height*(ratio-1))/math.log(ratio))
+        progression_y = ratio
+        progression_y_inv = 1/ratio
 
         # set number of points in x direction at wake
         nb_points_wake = int(self.dx_trail / self.mesh_size) + 1
@@ -1004,10 +1019,16 @@ class CType:
         progression_wake_inv = 1/0.98
 
         # set number of points on upper and lower part of airfoil
-        nb_airfoil = 10
+        nb_airfoil = int((1+dx_lead/4)/ext_mesh_size/0.5)
 
         # set number of points on front of airfoil
-        nb_airfoil_front = 20
+        # First compute radius of circle
+        r = math.sqrt(dy*dy/4+(0.5+dx_lead)*(0.5+dx_lead))
+        print(dy, 0.5+dx_lead, r, (180-20*dx_lead),
+              r*(180-20*dx_lead)/360*2*math.pi)
+        nb_airfoil_front = max(int(r/2*(180-20*min(dx_lead, 8))/360 /
+                               ext_mesh_size*2*math.pi)+1, 7+int(r/4*(180-20*min(dx_lead, 8))/360 /
+                               ext_mesh_size*2*math.pi))
 
         # transfinite curve A
         gmsh.model.geo.mesh.setTransfiniteCurve(
