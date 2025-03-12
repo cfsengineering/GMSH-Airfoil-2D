@@ -11,7 +11,7 @@ import gmsh
 from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_points,
                                         get_all_available_airfoil_names)
 from gmshairfoil2d.geometry_def import (AirfoilSpline, Circle, PlaneSurface,
-                                        Rectangle, CurveLoop, outofbounds, CType)
+                                        Rectangle, outofbounds, CType)
 
 
 def main():
@@ -181,14 +181,13 @@ def main():
         parser.print_help()
         sys.exit()
 
-    # Make the points all start by the (0,0) (or minimum of coord x when not exactly 0) to be easier to deal with after
+    # Make the points all start by the (0,0) (or minimum of coord x when not exactly 0) and go clockwise
+    # to be easier to deal with after (in airfoilspline)
     le = min(p[0] for p in cloud_points)
     for p in cloud_points:
         if p[0] == le:
             debut = cloud_points.index(p)
     cloud_points = cloud_points[debut:]+cloud_points[:debut]
-
-    # Points need to go clockwise (and still start with 0)
     if cloud_points[1][1] < cloud_points[0][1]:
         cloud_points.reverse()
         cloud_points = cloud_points[-1:] + cloud_points[:-1]
@@ -201,27 +200,31 @@ def main():
 
     # Airfoil
     airfoil = AirfoilSpline(
-        cloud_points, args.airfoil_mesh_size, args.structural)
+        cloud_points, args.airfoil_mesh_size)
     airfoil.rotation(aoa, (0.5, 0, 0), (0, 0, 1))
     airfoil.gen_skin()
     gmsh.model.geo.synchronize()
 
+    # If structural, all is done in CType
     if args.structural:
         dx_lead, dx_wake, dy = [float(value)
                                 for value in args.arg_struc.split("x")]
         ext_domain = CType(airfoil, dx_lead, dx_wake, dy,
                            args.ext_mesh_size, args.first_layer, args.ratio)
-    else:
-        # Create a boundary layer
-        # Choose the parameters
-        N = args.nb_layers
-        r = args.ratio
-        d = [args.first_layer]
-        # Construct the vector of cumulative distance of each layer from airfoil
-        for i in range(1, N):
-            d.append(d[-1] - (-d[0]) * r**i)
 
-        # Need to check that the layers do not go outside the box/circle (d[-1] is the total height of bl)
+    else:
+        # Choose the parameters for bl (when exist)
+        if not args.no_bl:
+            N = args.nb_layers
+            r = args.ratio
+            d = [args.first_layer]
+            # Construct the vector of cumulative distance of each layer from airfoil
+            for i in range(1, N):
+                d.append(d[-1] - (-d[0]) * r**i)
+        else:
+            d = [0]
+
+        # Need to check that the layers or airfoil do not go outside the box/circle (d[-1] is the total height of bl)
         outofbounds(airfoil, args.box, args.farfield, d[-1])
 
         # External domain
@@ -238,6 +241,7 @@ def main():
         surface = PlaneSurface([ext_domain, airfoil])
         gmsh.model.geo.synchronize()
 
+        # Create the boundary layer
         if not args.no_bl:
             curv = [airfoil.upper_spline.tag,  airfoil.lower_spline.tag]
 
@@ -248,12 +252,13 @@ def main():
             gmsh.model.mesh.field.setNumbers(f, 'CurvesList', curv)
             gmsh.model.mesh.field.setNumber(f, 'Size', d[0])  # size 1st layer
             gmsh.model.mesh.field.setNumber(f, 'Ratio', r)  # Growth ratio
+            # Total thickness of boundary layer
+            gmsh.model.mesh.field.setNumber(f, 'Thickness', d[-1])
 
             # Forces to use quads and not triangle when =1 (i.e. true)
             gmsh.model.mesh.field.setNumber(f, 'Quads', 1)
 
-            # Total thickness of boundary layer (instead of nb of layer as before)
-            gmsh.model.mesh.field.setNumber(f, 'Thickness', d[-1])
+            # Enter the points where we want a "fan" (points must be at end on line)(only for te for us)
             gmsh.model.mesh.field.setNumbers(
                 f, "FanPointsList", [airfoil.te.tag])
 
@@ -266,10 +271,11 @@ def main():
 
     gmsh.model.geo.synchronize()
 
-    # Generate mesh
+    # Choose the parameters of the mesh : we want the mesh size according to the points, and choose the nbs of points in the fan at the te
     gmsh.option.setNumber("Mesh.BoundaryLayerFanElements", 15)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
+    # Generate mesh
     gmsh.model.mesh.generate(2)
     gmsh.model.mesh.optimize("Laplace2D", 5)
 
