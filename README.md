@@ -29,7 +29,7 @@ pip install -e .
 gmshairfoil2d -h                                    
 
 optional arguments:
-  -h, --help                  show this help message and exit
+  -h, --help                  Show this help message and exit
   --list                      Display all airfoil available in the database :
                               https://m-selig.ae.illinois.edu/ads/coord_database.html
   --naca [4DIGITS]            NACA airfoil 4 digit
@@ -38,22 +38,20 @@ optional arguments:
   --aoa [AOA]                 Angle of attack [deg] (default: 0 [deg])
   --farfield [RADIUS]         Create a circular farfield mesh of given radius [m] (default 10m)
   --box [LENGTHxWIDTH]        Create a box mesh of dimensions [length]x[height] [m]
-  --airfoil_mesh_size [SIZE]  Mesh size of the airfoil countour [m] (default 0.01m)
-  --ext_mesh_size [SIZE]      Mesh size of the external domain [m] (default 0.2m)
-  --no_bl                     Do the meshing without a boundary layer (made with quads)
-  --first_layer [HEIGHT]      Height of the first layer [m] (default 3e-5m)
-  --ratio_bl [RATIO]          Growth ratio for the boundary layer (default 1.2)
-  --nb_layers [NB]            Total number of layers in the boundary layer (default 35)
-  --format [FORMAT]           format of the mesh file, e.g: msh, vtk, wrl, stl, mesh, cgns, su2,
+  --airfoil_mesh_size [SIZE]  Mesh size of the airfoil contour [m] (default 0.01m)
+  --ext_mesh_size [SIZE]      Mesh size of the external domain [m] (default 0.2m) (for normal, bl
+                              and structural)
+  --no_bl                     Do the unstructured meshing (with triangles), without a boundary
+                              layer
+  --first_layer [HEIGHT]      Height of the first layer [m] (default 3e-5m) (for bl and structural)
+  --ratio [RATIO]             Growth ratio of layers (default 1.2) (for bl and structural)
+  --nb_layers [INT]           Total number of layers in the boundary layer (default 35)
+  --format [FORMAT]           Format of the mesh file, e.g: msh, vtk, wrl, stl, mesh, cgns, su2,
                               dat (default su2)
-  --cut_te                    Change the trailing edge by cutting the last point (when pointy) to help with
-                              boundary layer
   --structural                Generate a structural mesh
-  --arg_struc                 Parameters for the structural mesh [leading (axis x)]x[wake
-      [LENGTHxLENGTHxLENGTH]  (axis x)]x[total height (axis y)] [m] (default 1x10x10)
-  --extrude                   Change the method to obtain the boundary layer (the extrude one
-                              is usually worse for weird shapes)
-  --output [PATH]             output path for the mesh file (default : current dir)
+  --arg_struc [LxLxL]         Parameters for the structural mesh [leading (axis x)]x[wake (axis
+                              x)]x[total height (axis y)] [m] (default 1x10x10)
+  --output [PATH]             Output path for the mesh file (default : current dir)
   --ui                        Open GMSH user interface to see the mesh
 
 ```
@@ -76,10 +74,10 @@ gmshairfoil2d --naca 0012 --farfield 10 --ui --no_bl
 
 ![GMSH user interface with the 2D mesh](images/example_mesh.png)
 
-To create a circular farfield mesh around a Drela DAE11 airfoil (the name in the database is "dae11") of 20m or radius with a mesh size of 0.005m on the airfoil:
+To create a circular farfield mesh with boudary layer around a Drela DAE11 airfoil (the name in the database is "dae11") of 4m or radius with a mesh size of 0.005m on the airfoil (but to not open on the interface):
 
 ```bash
-gmshairfoil2d --airfoil dae11 --farfield 20 --airfoil_mesh_size 0.005 --no_bl
+gmshairfoil2d --airfoil dae11 --farfield 4 --airfoil_mesh_size 0.005
 ```
 
 To create mesh around a Eppler E220 airfoil (the name in the database is "e211") with an angle of attack of 8 degree in a box of 12x4m (lenght x height) and save it as a vtk mesh and see the result with GMSH user interface:
@@ -90,10 +88,21 @@ gmshairfoil2d --airfoil e211 --aoa 8 --box 12x4 --format vtk --ui --no_bl
 
 ![GMSH user interface with the 2D mesh, rectangular box](images/example_mesh_box.png)
 
+
+
 To create a boxed mesh around a NACA 11-H-09 airfoil (the name in the database is "n11h9"), using the boundary layer with default parameters (first layer of height 3e-5, 35 layers and growth ratio of 1.2)
 
 ```bash
 gmshairfoil2d --airfoil n11h9 --ui --box 2x1.4
 ```
 
-![GMSH result with 2D mesh with boundary layer, rectangular box](images/example_bl.png)
+![GMSH result with 2D mesh with boundary layer, rectangular box](images/example_n11h9_bl.png)
+
+
+To create a structural mesh around a Naca 4220 airfoil (the 4 digits code is obviously "4220"), with first layer height of 0.0006, leading length of 1, wake length of 7, height of 6, and angle of attack of 7 degrees
+
+```bash
+ gmshairfoil2d --naca 4220 --ui --structural --first_layer 0.01 --arg_struc 1x6x7 --aoa 7
+```
+
+![GMSH result with 2D structural mesh](images/example_structural_naca4220.png)

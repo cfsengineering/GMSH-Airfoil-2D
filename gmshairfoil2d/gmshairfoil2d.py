@@ -90,7 +90,7 @@ def main():
     parser.add_argument(
         "--no_bl",
         action="store_true",
-        help="Do the unstructured meshing, without a boundary layer (made with quads)",
+        help="Do the unstructured meshing (with triangles), without a boundary layer",
     )
 
     parser.add_argument(
@@ -99,7 +99,7 @@ def main():
         metavar="HEIGHT",
         nargs="?",
         default=3e-5,
-        help="Height of the first layer [m] (default 3e-5m) (boundary layer or structural mesh)",
+        help="Height of the first layer [m] (default 3e-5m) (for bl and structural)",
     )
 
     parser.add_argument(
@@ -108,13 +108,13 @@ def main():
         metavar="RATIO",
         nargs="?",
         default=1.2,
-        help="Growth ratio for the boundary layer (default 1.2) or structural mesh",
+        help="Growth ratio of layers (default 1.2) (for bl and structural)",
     )
 
     parser.add_argument(
         "--nb_layers",
         type=int,
-        metavar="NB",
+        metavar="INT",
         nargs="?",
         default=35,
         help="Total number of layers in the boundary layer (default 35)",
@@ -136,7 +136,7 @@ def main():
     parser.add_argument(
         "--arg_struc",
         type=str,
-        metavar="LENGTHxLENGTHxLENGTH",
+        metavar="[LxLxL]",
         default="1x10x10",
         help="Parameters for the structural mesh [leading (axis x)]x[wake (axis x)]x[total height (axis y)] [m] (default 1x10x10)",
     )
