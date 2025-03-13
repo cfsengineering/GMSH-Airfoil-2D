@@ -559,7 +559,7 @@ class Airfoil:
 
     def rotation(self, angle, origin, axis):
         """
-        Methode to rotate the object CurveLoop
+        Method to rotate the object CurveLoop
         ...
 
         Parameters
@@ -644,16 +644,18 @@ class AirfoilSpline:
             te_down_indx = self.te_indx+1
             vertical = True
 
+        t = True
         # If end with two points, add one point in the prolongation of the curves to get pointy edge
-        if vertical:
+        if vertical and t:
             # Compute the prolongation of the last segment and their meetpoint : it will be the new point
             x, y, z, w = self.points[te_up_indx].x, self.points[
                 te_up_indx].y, self.points[te_down_indx].x, self.points[te_down_indx].y
             a, b, c, d = x - self.points[te_up_indx-1].x, y-self.points[te_up_indx -
                                                                         1].y, z-self.points[te_down_indx+1].x, w-self.points[te_down_indx+1].y
+            print("x,y,z,w", x, y, z, w, "a,b,c,d", a, b, c, d)
             #
             # We have that (x,y) are the coordinates of te_up and (z,w) the coordinates of te_down
-            # p1 is the point before te_up and p2 the point after te _down
+            # p1 is the point before te_up and p2 the point after te_down
             #      \
             #       . p1
             #        \ vector from p1 to (x,y) is (a,b)
@@ -667,7 +669,38 @@ class AirfoilSpline:
 
             # We compute mu: solution from the system (x,y)+lambda(a,b)=(z,w)+mu(c,d) that gives us the intersection point
             mu = (b*(x-z)+a*(w-y))/(b*c-a*d)
-            new = Point(z+mu*c, w+mu*d, 0, self.mesh_size)
+            if z+mu*c <= 1.05 and z+mu*c > 1:
+                new = Point(z+mu*c, w+mu*d, 0, self.mesh_size)
+            # Check that it is not in the wrong direction (like with oaf095), and otherwise constrain it
+            elif z+mu*c <= 1:
+                '''
+                print("Was <1")
+                flag = Point(2, 1, 0, self.mesh_size)
+                for i in range(2, 20):
+                    a, b, c, d = x - self.points[te_up_indx-i].x, y-self.points[te_up_indx -
+                                                                                i].y, z-self.points[te_down_indx+i].x, w-self.points[te_down_indx+i].y
+                    mu = (b*(x-z)+a*(w-y))/(b*c-a*d)
+                    print(i, z+mu*c, w+mu*d)
+                    if z+mu*c <= 1.05 and z+mu*c > 1:
+                        new = Point(z+mu*c, w+mu*d, 0, self.mesh_size)
+                        break
+                    else:
+                        if i == 19:
+                            new = Point(1.05, -0.04, 0, self.mesh_size)
+                            # TODO : change la coord en y et fix tout ca
+                '''
+                new = Point(z+mu*c, w+mu*d, 0, self.mesh_size)
+            # Check that it is not absurdly far (like with hh02), and otherwise constrain it
+            else:
+                '''
+                # if too far, we take the point p in the middle of (x,y) and (z,w), and add the vector mean of (a,b) and (c,d) until we reach 1.05
+                px, py = (x+z)/2, (y+w)/2
+                e, f = (a+c)/2, (b+d)/2
+                lambd = (1.05-px)/e
+                new = Point(1.05, py+lambd*f, 0, self.mesh_size)
+                '''
+                new = Point(z+mu*c, w+mu*d, 0, self.mesh_size)
+
             # Now insert the point in th list of points and change the index for te to be the new point
             self.points.insert(te_down_indx, new)
             self.te = new
@@ -680,8 +713,10 @@ class AirfoilSpline:
         -------
         """
         # create a spline from the leading edge to the trailing edge (up part)
+
         self.upper_spline = Spline(
             self.points[self.le_indx: self.te_indx + 1])
+
         # create a spline from the trailing edge to the leading edge (down part)
         self.lower_spline = Spline(
             self.points[self.te_indx:] +
@@ -782,13 +817,13 @@ def outofbounds(airfoil, box, radius, blthick):
     (which is a problem for meshing later)
 
     Args:
-        cloud_points (AirfoilSpline): 
+        cloud_points (AirfoilSpline):
             The AirfoilSpline containing the points
-        box (string): 
+        box (string):
             the box arguments received by the parser (float x float)
-        radius (float): 
+        radius (float):
             radius of the farfield (when needed)
-        blthick (float): 
+        blthick (float):
             total thickness of the boundary layer (0 for mesh without bl)
     """
     if box:
@@ -799,7 +834,7 @@ def outofbounds(airfoil, box, radius, blthick):
         miny = min(p.y for p in airfoil.points)
         maxy = max(p.y for p in airfoil.points)
         # Check :
-        # If the max-0.5 (which is just recentered in 0)+bl thickness value is bigger than length/2 --> too far right.
+        # If the max-0.5 (which is just recentering the airfoil in 0)+bl thickness value is bigger than length/2 --> too far right.
         # Same with min and left. (minx & maxx should be 0 & 1 but we recompute to be sure)
         # Same in y.
         if abs(maxx-0.5)+abs(blthick) > length/2 or abs(minx-0.5)+abs(blthick) > length/2 or abs(maxy)+abs(blthick) > width/2 or abs(miny)+abs(blthick) > width/2:
@@ -834,17 +869,25 @@ class CType:
 
         self.mesh_size = ext_mesh_size
 
-        # k smallest element for structured grid inlet line. First compute k
+        # print("airfoil le", airfoil_spline.le.x, airfoil_spline.le.y)
+
+        # The k smallest element for structured grid inlet line. First compute k & k2 (want first coordinate after 0.031)
         for p in airfoil_spline.points:
-            if p.x > 0.03:
+            if p.x > 0.031:
                 k = airfoil_spline.points.index(p)
                 break
-        # Then split the splines, and order by coordinate x
+        l = len(airfoil_spline.points)
+        for i in range(l-1, -1, -1):
+            if airfoil_spline.points[i].x > 0.031:
+                k2 = l-i
+                break
+
+        # Then split the splines, and order by coordinate x (not needed imo but well)
         upper_spline, lower_spline = self.airfoil_spline.gen_skin()
         self.le_upper_point = sorted(
             upper_spline.point_list, key=lambda p: p.x)[k]
         self.le_lower_point = sorted(
-            lower_spline.point_list, key=lambda p: p.x)[k]
+            lower_spline.point_list, key=lambda p: p.x)[k2]
         upper_spline_front, upper_spline_back = gmsh.model.geo.splitCurve(
             upper_spline.tag, [self.le_upper_point.tag])
         lower_spline_back, lower_spline_front = gmsh.model.geo.splitCurve(
@@ -854,7 +897,7 @@ class CType:
         upper_points_front = sorted(
             upper_spline.point_list, key=lambda p: p.x)[:k+1]
         lower_points_front = sorted(
-            lower_spline.point_list, key=lambda p: p.x)[:k+1]
+            lower_spline.point_list, key=lambda p: p.x)[:k2+1]
         lower_points_front.reverse()
         points_front = lower_points_front[:-1] + upper_points_front
         points_front_tag = [point.tag for point in points_front]

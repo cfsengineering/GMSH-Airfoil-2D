@@ -182,7 +182,7 @@ def main():
         sys.exit()
 
     # Make the points all start by the (0,0) (or minimum of coord x when not exactly 0) and go clockwise
-    # to be easier to deal with after (in airfoilspline)
+    # --> to be easier to deal with after (in airfoilspline)
     le = min(p[0] for p in cloud_points)
     for p in cloud_points:
         if p[0] == le:
@@ -271,7 +271,8 @@ def main():
 
     gmsh.model.geo.synchronize()
 
-    # Choose the parameters of the mesh : we want the mesh size according to the points, and choose the nbs of points in the fan at the te
+    # Choose the parameters of the mesh : we want the mesh size according to the points and not curvature (doesn't work with farfield),
+    # and choose the nbs of points in the fan at the te
     gmsh.option.setNumber("Mesh.BoundaryLayerFanElements", 15)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
