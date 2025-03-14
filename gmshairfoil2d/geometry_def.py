@@ -599,7 +599,7 @@ class AirfoilSpline:
         its position x,y,z
     mesh_size : float
         attribute given for the class Point,Note that a mesh size larger
-        than the resolution given by the cloud of points
+        than the resolution given by the cloud of points TODO
         will not be taken into account
     name : str
         name of the marker that will be associated to the airfoil
@@ -635,24 +635,22 @@ class AirfoilSpline:
         vertical = False
         # If both are so close to one, they are vertical and not just neighbouring point (bc te is always 1)
         # Just need to check if the one before or after and then label them correctly
-        if self.points[self.te_indx-1].x > 0.9999:
+        if self.points[self.te_indx-1].x > self.te.x-0.0001:
             te_up_indx = self.te_indx-1
             te_down_indx = self.te_indx
             vertical = True
-        elif self.points[self.te_indx+1].x > 0.9999:
+        elif self.points[self.te_indx+1].x > self.te.x-0.0001:
             te_up_indx = self.te_indx
             te_down_indx = self.te_indx+1
             vertical = True
 
-        t = True
         # If end with two points, add one point in the prolongation of the curves to get pointy edge
-        if vertical and t:
+        if vertical:
             # Compute the prolongation of the last segment and their meetpoint : it will be the new point
             x, y, z, w = self.points[te_up_indx].x, self.points[
                 te_up_indx].y, self.points[te_down_indx].x, self.points[te_down_indx].y
             a, b, c, d = x - self.points[te_up_indx-1].x, y-self.points[te_up_indx -
                                                                         1].y, z-self.points[te_down_indx+1].x, w-self.points[te_down_indx+1].y
-            print("x,y,z,w", x, y, z, w, "a,b,c,d", a, b, c, d)
             #
             # We have that (x,y) are the coordinates of te_up and (z,w) the coordinates of te_down
             # p1 is the point before te_up and p2 the point after te_down
@@ -667,47 +665,37 @@ class AirfoilSpline:
             #   vector from p2 to (z,w) is (c,d)
             #
 
+            nothing = False
             # We compute mu: solution from the system (x,y)+lambda(a,b)=(z,w)+mu(c,d) that gives us the intersection point
             if b*c-a*d != 0:
                 mu = (b*(x-z)+a*(w-y))/(b*c-a*d)
             else:
-                mu = 0.01
-                # TODO choose what to do in this case (as parallel can be treated as the ones <1 I think)
-            if z+mu*c <= 1.1 and z+mu*c > 1:
+                # only happens with vr7b and vr8b (parallel edges so no solutions)
+                mu = 10000000
+                # will be treated in the else
+
+            # Now to be coherent, we want the pointy edge to have a x coordinate between te.x and 0.1 further
+            if z+mu*c <= self.te.x + 0.1 and z+mu*c > self.te.x:
                 new = Point(z+mu*c, w+mu*d, 0, self.mesh_size)
-            # Check that it is not in the wrong direction (like with oaf095), and otherwise constrain it
-            elif z+mu*c <= 1:
-                '''
-                print("Was <1")
-                flag = Point(2, 1, 0, self.mesh_size)
-                for i in range(2, 20):
-                    a, b, c, d = x - self.points[te_up_indx-i].x, y-self.points[te_up_indx -
-                                                                                i].y, z-self.points[te_down_indx+i].x, w-self.points[te_down_indx+i].y
-                    mu = (b*(x-z)+a*(w-y))/(b*c-a*d)
-                    print(i, z+mu*c, w+mu*d)
-                    if z+mu*c <= 1.05 and z+mu*c > 1:
-                        new = Point(z+mu*c, w+mu*d, 0, self.mesh_size)
-                        break
-                    else:
-                        if i == 19:
-                            new = Point(1.05, -0.04, 0, self.mesh_size)
-                            # TODO : change la coord en y et fix tout ca
-                '''
-                new = Point(z+mu*c, w+mu*d, 0, self.mesh_size)
-            # Check that it is not absurdly far (like with hh02), and otherwise constrain it
+
+            # If not, it can be in the wrong direction (like with oaf095) or absurdly far (like with hh02), and so we constrain it
+            # (happens with roughly 40 airfoils, most because not well discretized)
+
+            # the ones in this case are the one not well coded with two really close horizontally points (like s2091). So we just don't do anything
+            elif z+mu*c > self.te.x-0.001 and z+mu*c <= self.te.x:
+                nothing = True
             else:
                 # if too far, we take the point p in the middle of (x,y) and (z,w), and add the vector mean of (a,b) and (c,d) until we reach 1.05
                 px, py = (x+z)/2, (y+w)/2
                 e, f = (a+c)/2, (b+d)/2
-                lambd = (1.05-px)/e
-                new = Point(1.05, py+lambd*f, 0, self.mesh_size)
-                # TODO fix that for weird come back
-                # new = Point(z+mu*c, w+mu*d, 0, self.mesh_size)
+                lambd = (self.te.x + 0.05-px)/e
+                new = Point(self.te.x + 0.05, py+lambd*f, 0, self.mesh_size)
 
-            # Now insert the point in th list of points and change the index for te to be the new point
-            self.points.insert(te_down_indx, new)
-            self.te = new
-            self.te_indx = te_down_indx
+            if not nothing:
+                # Now insert the point in th list of points and change the index for te to be the new point
+                self.points.insert(te_down_indx, new)
+                self.te = new
+                self.te_indx = te_down_indx
 
     def gen_skin(self):
         """
@@ -716,7 +704,6 @@ class AirfoilSpline:
         -------
         """
         # create a spline from the leading edge to the trailing edge (up part)
-
         self.upper_spline = Spline(
             self.points[self.le_indx: self.te_indx + 1])
 
@@ -872,9 +859,7 @@ class CType:
 
         self.mesh_size = ext_mesh_size
 
-        # print("airfoil le", airfoil_spline.le.x, airfoil_spline.le.y)
-
-        # The k smallest element for structured grid inlet line. First compute k & k2 (want first coordinate after 0.031)
+        # We want to cut the leading edge part for structured grid inlet line. First compute k & k2 the first coordinate after 0.031 (up & down, going from leading edge)
         for p in airfoil_spline.points:
             if p.x > 0.031:
                 k = airfoil_spline.points.index(p)
@@ -885,7 +870,7 @@ class CType:
                 k2 = l-i
                 break
 
-        # Then split the splines, and order by coordinate x (not needed imo but well)
+        # Then split the splines : find the points where you want to split and split
         upper_spline, lower_spline = self.airfoil_spline.gen_skin()
         self.le_upper_point = sorted(
             upper_spline.point_list, key=lambda p: p.x)[k]
@@ -896,7 +881,7 @@ class CType:
         lower_spline_back, lower_spline_front = gmsh.model.geo.splitCurve(
             lower_spline.tag, [self.le_lower_point.tag])
 
-        # Create the new front spline
+        # Create the new front spline (from the two front parts)
         upper_points_front = sorted(
             upper_spline.point_list, key=lambda p: p.x)[:k+1]
         lower_points_front = sorted(
@@ -907,20 +892,34 @@ class CType:
         spline_front = gmsh.model.geo.addSpline(points_front_tag)
 
         # Create points on the outside domain (& center point)
+        #        p1                      p2         p3
+        #        ------------------------------------
+        #       / \                      |          |
+        #      /    \                    |          |       *1 : dx_leading
+        #     /       \                  |          |       *2 : dx_wake
+        #    /    *1  /00000000000000\   |          |       *3 : dy
+        #   (     ---(0000000(p0)0000000)|----------| p4
+        #    \        \00000000000000/   |    *2    |*3
+        #     \       /                  |          |
+        #      \    /                    |          |
+        #       \ /                      |          |
+        #        ------------------------------------ p5
+        #       p7                       p6
         self.points = [
-            Point(0.5, 0, z, self.mesh_size),
+            Point(0.5, 0, z, self.mesh_size),  # 0
             Point(self.airfoil_spline.le.x - self.dx_lead,
-                  self.dy / 2, z, self.mesh_size),
-            Point(self.airfoil_spline.te.x, self.dy / 2, z, self.mesh_size),
+                  self.dy / 2, z, self.mesh_size),  # 1
+            Point(self.airfoil_spline.te.x, self.dy / 2, z, self.mesh_size),  # 2
             Point(self.airfoil_spline.te.x + self.dx_trail,
-                  self.dy / 2, z, self.mesh_size),
+                  self.dy / 2, z, self.mesh_size),  # 3
             Point(self.airfoil_spline.te.x + self.dx_trail,
-                  self.airfoil_spline.te.y, z, self.mesh_size),
+                  self.airfoil_spline.te.y, z, self.mesh_size),  # 4
             Point(self.airfoil_spline.te.x + self.dx_trail, -
-                  self.dy / 2, z, self.mesh_size),
-            Point(self.airfoil_spline.te.x, - self.dy / 2, z, self.mesh_size),
+                  self.dy / 2, z, self.mesh_size),  # 5
+            Point(self.airfoil_spline.te.x, -
+                  self.dy / 2, z, self.mesh_size),  # 6
             Point(self.airfoil_spline.le.x - self.dx_lead, -
-                  self.dy / 2, z, self.mesh_size),
+                  self.dy / 2, z, self.mesh_size),  # 7
         ]
 
         # Create all the lines : outside and surface separation
@@ -959,18 +958,20 @@ class CType:
         #                      L6               L5
 
         # Compute number of nodes needed to have the desired first layer height (=nb of layer +1)(on half height)
-        # int(self.dy / 2 / self.mesh_size) + 1 //// old way
+        # Computation : we have that dy/2 is total height, and let a=first layer height
+        # dy/2=a +a*ratio +a*ratio^2 + ... + a * ratio6(N-1) and rearrange to et the following equation
         nb_points_y = 3+int(math.log(1+dy/2/height*(ratio-1))/math.log(ratio))
         progression_y = ratio
         progression_y_inv = 1/ratio
 
-        # set number of points in x direction at wake
+        # Set number of points in x direction at wake (to get desired meshsize)
         nb_points_wake = int(self.dx_trail / self.mesh_size) + 1
+        # Set a progression to adapt slightly
         progression_wake = 0.98
         progression_wake_inv = 1/0.98
 
-        # set number of points on upper and lower part of airfoil
-        # Why this formula : we estimate we want the height at 1/4 to be like the neighbour. As the neighbour is transfinite, mesh size is roughly 1/2 total mesh_size
+        # Set number of points on upper and lower part of airfoil
+        # Why this formula : we estimate we want the width of mesh at 1/4 to be like the neighbour. As the neighbour is transfinite, mesh size can be said to be roughly 1/2 total mesh_size
         nb_airfoil = int((1+dx_lead/4)/ext_mesh_size*2)
 
         # Set number of points on front of airfoil
@@ -978,18 +979,20 @@ class CType:
         r = math.sqrt(dy*dy/4+(0.5+dx_lead)*(0.5+dx_lead))
         #            /|\
         #           / |  \
-        #         /   |   \                                                                    |\
+        #         /   |   \                                                                     |\
         # circ  /     |dy/2 \                                                              dy/2 |   \
         #     /       |      \                                                                  |      \  radius
         #    /        |      /000000000                             thus we get a triangle      |         \
-        #   (         -----(000. <- center of circle, (0.5,0,0)                                 |____________\<-angle theta/2
-        #             dx_lead                                                                    dx_lead+0.5
+        #   (         -----(0000. <- center of circle, (0.5,0,0)                                |____________\<-angle theta/2
+        #           dx_lead \000000000                                                           dx_lead+0.5
         #
         # Then we compute the estimated angle of the front part
         theta = 2 * math.atan(dy/(1+2*dx_lead))
-        # Now same, we assume we want the same length at 1/4 of the length, as the other is multiplied by 2 to be with the transfinite, we mult by 1.4 to be reasonable
+        # Now same, we assume we want the same length at 1/4 of the length, as the other is multiplied by 2 to be with the transfinite, we mult by 1.4 to be reasonable (much smaller in the curve front)
         # (2 pi r/4)*(theta/(2 pi)) is the length of the arccircle at 1/4 distance, then /extmeshsize for nb of nodes, then +1 bc speaks of nb of nodes
         nb_airfoil_front = max(4, int((r/4*theta)/ext_mesh_size*1.4)+1)
+
+        # Now we set all the corresponding transfinite curve we need (with our coefficient computed before)
 
         # transfinite curve A
         gmsh.model.geo.mesh.setTransfiniteCurve(
@@ -1027,6 +1030,8 @@ class CType:
             lower_spline_back, nb_airfoil, "Bump", 0.2)
         gmsh.model.geo.mesh.setTransfiniteCurve(self.lines[6].tag, nb_airfoil)
 
+        # Now we add the surfaces
+
         # transfinite surface A (forces structured mesh)
         gmsh.model.geo.addCurveLoop(
             [self.lines[7].tag, spline_front, self.lines[0].tag, - circle_arc], 1)
@@ -1057,7 +1062,7 @@ class CType:
         gmsh.model.geo.addPlaneSurface([5], 5)
         gmsh.model.geo.mesh.setTransfiniteSurface(5)
 
-        # recombine surface to create quadrilateral elements
+        # Lastly, recombine surface to create quadrilateral elements
         gmsh.model.geo.mesh.setRecombine(2, 1, 90)
         gmsh.model.geo.mesh.setRecombine(2, 2, 90)
         gmsh.model.geo.mesh.setRecombine(2, 3, 90)

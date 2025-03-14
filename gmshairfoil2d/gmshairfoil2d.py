@@ -181,8 +181,6 @@ def main():
         parser.print_help()
         sys.exit()
 
-    print(cloud_points)
-
     # Make the points all start by the (0,0) (or minimum of coord x when not exactly 0) and go clockwise
     # --> to be easier to deal with after (in airfoilspline)
     le = min(p[0] for p in cloud_points)
@@ -277,6 +275,7 @@ def main():
     # and choose the nbs of points in the fan at the te
     gmsh.option.setNumber("Mesh.BoundaryLayerFanElements", 15)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
+    # gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 3)
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
     # Generate mesh
     gmsh.model.mesh.generate(2)
