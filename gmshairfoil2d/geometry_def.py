@@ -970,20 +970,21 @@ class CType:
         progression_wake_inv = 1/0.98
 
         # set number of points on upper and lower part of airfoil
-        # Why this formula : we estimate we want the heught at 1/4 to be like the neighbour. As the neighbour is transfinite, mesh size is roughly 1/2 total mesh_size
+        # Why this formula : we estimate we want the height at 1/4 to be like the neighbour. As the neighbour is transfinite, mesh size is roughly 1/2 total mesh_size
         nb_airfoil = int((1+dx_lead/4)/ext_mesh_size*2)
 
-        # set number of points on front of airfoil
-        #
-        #              ----
-        #           / |    \                                                                    |\
-        # circ    /   |dy/2 \                                                               dy/2|   \
-        #      /      |      \                                                                  |      \  radius
-        #    /        |      /000000000                             thus we get a triangle      |         \
-        #   (         -----(000. <- center of circle, (0.5,0,0)                                 |____________\<-angle theta/2
-        #             dx_lead                                                                     dx_lead+0.5
+        # Set number of points on front of airfoil
         # First compute radius of circle
         r = math.sqrt(dy*dy/4+(0.5+dx_lead)*(0.5+dx_lead))
+        #            /|\
+        #           / |  \
+        #         /   |   \                                                                    |\
+        # circ  /     |dy/2 \                                                              dy/2 |   \
+        #     /       |      \                                                                  |      \  radius
+        #    /        |      /000000000                             thus we get a triangle      |         \
+        #   (         -----(000. <- center of circle, (0.5,0,0)                                 |____________\<-angle theta/2
+        #             dx_lead                                                                    dx_lead+0.5
+        #
         # Then we compute the estimated angle of the front part
         theta = 2 * math.atan(dy/(1+2*dx_lead))
         # Now same, we assume we want the same length at 1/4 of the length, as the other is multiplied by 2 to be with the transfinite, we mult by 1.4 to be reasonable
