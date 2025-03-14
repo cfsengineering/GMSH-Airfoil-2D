@@ -668,8 +668,12 @@ class AirfoilSpline:
             #
 
             # We compute mu: solution from the system (x,y)+lambda(a,b)=(z,w)+mu(c,d) that gives us the intersection point
-            mu = (b*(x-z)+a*(w-y))/(b*c-a*d)
-            if z+mu*c <= 1.05 and z+mu*c > 1:
+            if b*c-a*d != 0:
+                mu = (b*(x-z)+a*(w-y))/(b*c-a*d)
+            else:
+                mu = 0.01
+                # TODO choose what to do in this case (as parallel can be treated as the ones <1 I think)
+            if z+mu*c <= 1.1 and z+mu*c > 1:
                 new = Point(z+mu*c, w+mu*d, 0, self.mesh_size)
             # Check that it is not in the wrong direction (like with oaf095), and otherwise constrain it
             elif z+mu*c <= 1:
@@ -692,14 +696,13 @@ class AirfoilSpline:
                 new = Point(z+mu*c, w+mu*d, 0, self.mesh_size)
             # Check that it is not absurdly far (like with hh02), and otherwise constrain it
             else:
-                '''
                 # if too far, we take the point p in the middle of (x,y) and (z,w), and add the vector mean of (a,b) and (c,d) until we reach 1.05
                 px, py = (x+z)/2, (y+w)/2
                 e, f = (a+c)/2, (b+d)/2
                 lambd = (1.05-px)/e
                 new = Point(1.05, py+lambd*f, 0, self.mesh_size)
-                '''
-                new = Point(z+mu*c, w+mu*d, 0, self.mesh_size)
+                # TODO fix that for weird come back
+                # new = Point(z+mu*c, w+mu*d, 0, self.mesh_size)
 
             # Now insert the point in th list of points and change the index for te to be the new point
             self.points.insert(te_down_indx, new)
@@ -967,15 +970,17 @@ class CType:
         progression_wake_inv = 1/0.98
 
         # set number of points on upper and lower part of airfoil
-        nb_airfoil = int((1+dx_lead/4)/ext_mesh_size/0.5)
+        # Why this formula : we estimate we want the heught at 1/4 to be like the neighbour. As the neighbour is transfinite, mesh size is roughly 1/2 total mesh_size
+        nb_airfoil = int((1+dx_lead/4)/ext_mesh_size*2)
 
         # set number of points on front of airfoil
         # First compute radius of circle
         r = math.sqrt(dy*dy/4+(0.5+dx_lead)*(0.5+dx_lead))
-        nb_airfoil_front = max(int(r/2*(180-20*min(dx_lead, 8))/360 /
-                               ext_mesh_size*2*math.pi)+1, 7+int(r/4*(180-20*min(dx_lead, 8))/360 /
-                               ext_mesh_size*2*math.pi))
-
+        # Then we compute the estimated angle of the front part
+        theta = 2 * math.atan(dy/(1+2*dx_lead))
+        # Now same, we assume we want the same length at 1/4 of the length, as the other is multiplied by 2 to be with the transfinite, we mult by 1.4 to be reasonable
+        # (2 pi r/4)*(theta/(2 pi))/extmeshsize, then +1 bc speaks of nb of nodes
+        nb_airfoil_front = max(4, int((r/4*theta)/ext_mesh_size*1.4)+1)
         # transfinite curve A
         gmsh.model.geo.mesh.setTransfiniteCurve(
             self.lines[7].tag, nb_points_y, "Progression", progression_y_inv)  # same for plane E

@@ -181,6 +181,8 @@ def main():
         parser.print_help()
         sys.exit()
 
+    print(cloud_points)
+
     # Make the points all start by the (0,0) (or minimum of coord x when not exactly 0) and go clockwise
     # --> to be easier to deal with after (in airfoilspline)
     le = min(p[0] for p in cloud_points)
