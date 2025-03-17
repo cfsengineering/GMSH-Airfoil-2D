@@ -14,16 +14,16 @@ def test_mesh_rectangle():
     hole inside is meshed correctly
 
     """
-    
+
     # Generate Geometry :
     gmsh.initialize()
     box = Rectangle(0, 0, 0, 1, 1, mesh_size=0.5)
     surface_domain = PlaneSurface([box])
-    
-    gmsh.model.occ.synchronize()
+
+    gmsh.model.geo.synchronize()
     box.define_bc()
     surface_domain.define_bc()
-    
+
     # Generate mesh
     gmsh.model.mesh.generate(2)
     gmsh.write(str(Path(test_data_dir, "mesh_test.su2")))
@@ -34,5 +34,5 @@ def test_mesh_rectangle():
         mesh_test = f.read()
     with open(Path(test_data_dir, "mesh.su2"), "r") as f:
         mesh_origin = f.read()
-        
+
     assert mesh_test == mesh_origin
