@@ -243,7 +243,11 @@ def main():
 
         # Create the boundary layer
         if not args.no_bl:
-            curv = [airfoil.upper_spline.tag,  airfoil.lower_spline.tag]
+            # curv = [airfoil.upper_spline.tag,
+            #        airfoil.lower_spline.tag, airfoil.down_front_spline.tag, airfoil.up_front_spline.tag]
+            # curv = [airfoil.upper_spline.tag, airfoil.lower_spline.tag]
+            curv = [airfoil.upper_spline.tag,
+                    airfoil.lower_spline.tag, airfoil.front_spline.tag]
 
             # Creates a new mesh field of type 'BoundaryLayer' and assigns it an ID (f).
             f = gmsh.model.mesh.field.add('BoundaryLayer')
@@ -258,7 +262,7 @@ def main():
             # Forces to use quads and not triangle when =1 (i.e. true)
             gmsh.model.mesh.field.setNumber(f, 'Quads', 1)
 
-            # Enter the points where we want a "fan" (points must be at end on line)(only for te for us)
+            # Enter the points where we want a "fan" (points must be at end on line)(only te for us)
             gmsh.model.mesh.field.setNumbers(
                 f, "FanPointsList", [airfoil.te.tag])
 
@@ -271,12 +275,17 @@ def main():
 
     gmsh.model.geo.synchronize()
 
-    # Choose the parameters of the mesh : we want the mesh size according to the points and not curvature (doesn't work with farfield),
-    # and choose the nbs of points in the fan at the te
-    gmsh.option.setNumber("Mesh.BoundaryLayerFanElements", 15)
+    # Choose the parameters of the mesh : we want the mesh size according to the points and not curvature (doesn't work with farfield)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
-    # gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 3)
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
+    # Add transfinite line on the front to get more point in the middle (where the curvature of the le makes it usually more spaced)
+    gmsh.model.mesh.setTransfiniteCurve(
+        airfoil.front_spline.tag, int(0.25/args.airfoil_mesh_size), "Bump", 12)
+    # Choose the nbs of points in the fan at the te:
+    # Compute coef : between 10 and 25, 15 when usual mesh size but adapted to mesh size
+    coef = max(10, min(25, 15*0.01/args.airfoil_mesh_size))
+    gmsh.option.setNumber("Mesh.BoundaryLayerFanElements", coef)
+
     # Generate mesh
     gmsh.model.mesh.generate(2)
     gmsh.model.mesh.optimize("Laplace2D", 5)

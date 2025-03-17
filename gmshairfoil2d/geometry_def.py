@@ -626,14 +626,9 @@ class AirfoilSpline:
         self.te_indx = self.points.index(self.te)
         self.le_indx = self.points.index(self.le)
 
-        # Just a check that the points start with the (0,0,0) point (or min), bc then we assume that are sorted
-        if self.le_indx != 0:
-            print("Error in the points numeration")
-            sys.exit()
-
         # Check if the airfoil end in a single point, or with two different points (vertical of each other)
         vertical = False
-        # If both are so close to one, they are vertical and not just neighbouring point (bc te is always 1)
+        # If two (in the end) are so close in coordinate x, they are vertical and not just neighbouring point (examples below)
         # Just need to check if the one before or after and then label them correctly
         if self.points[self.te_indx-1].x > self.te.x-0.0001:
             te_up_indx = self.te_indx-1
@@ -681,11 +676,11 @@ class AirfoilSpline:
             # If not, it can be in the wrong direction (like with oaf095) or absurdly far (like with hh02), and so we constrain it
             # (happens with roughly 40 airfoils, most because not well discretized)
 
-            # the ones in this case are the one not well coded with two really close horizontally points (like s2091). So we just don't do anything
+            # First we take off the ones in this case (new would be so close) are the one not well coded with two really close horizontally points (like s2091). So we just don't do anything
             elif z+mu*c > self.te.x-0.001 and z+mu*c <= self.te.x:
                 nothing = True
             else:
-                # if too far, we take the point p in the middle of (x,y) and (z,w), and add the vector mean of (a,b) and (c,d) until we reach 1.05
+                # if too far or behind, we take the point p in the middle of (x,y) and (z,w), and add the vector mean of (a,b) and (c,d) until we reach 1.05 (or te +0.05 to be precise)
                 px, py = (x+z)/2, (y+w)/2
                 e, f = (a+c)/2, (b+d)/2
                 lambd = (self.te.x + 0.05-px)/e
@@ -703,15 +698,27 @@ class AirfoilSpline:
         of the airfoil are in their final position
         -------
         """
-        # create a spline from the leading edge to the trailing edge (up part)
-        self.upper_spline = Spline(
-            self.points[self.le_indx: self.te_indx + 1])
+        # Find the first point after 0.069 in the upper band lower spline
+        debut = True
+        for p in self.points:
+            if p.x > 0.049 and debut:
+                k1 = self.points.index(p)
+                debut = False
+            if p.x <= 0.049 and not debut:
+                k2 = self.points.index(p)-1
+                break
 
-        # create a spline from the trailing edge to the leading edge (down part)
+        # create a spline from the up middle point to the trailing edge (up part)
+        self.upper_spline = Spline(
+            self.points[k1: self.te_indx + 1])
+
+        # create a spline from the trailing edge to the up down point (down part)
         self.lower_spline = Spline(
-            self.points[self.te_indx:] +
-            self.points[: (self.le_indx) + 1]  # just le which is coord 0
+            self.points[self.te_indx:k2+1]
         )
+
+        # Create a spline for the front part of the airfoil
+        self.front_spline = Spline(self.points[k2:]+self.points[:k1+1])
         return self.upper_spline, self.lower_spline
 
     def close_loop(self):
@@ -723,7 +730,7 @@ class AirfoilSpline:
         _ : int
             return the tag of the CurveLoop object
         """
-        return CurveLoop([self.upper_spline, self.lower_spline]).tag
+        return CurveLoop([self.upper_spline, self.lower_spline, self.front_spline]).tag
 
     def define_bc(self):
         """
@@ -859,7 +866,7 @@ class CType:
 
         self.mesh_size = ext_mesh_size
 
-        # We want to cut the leading edge part for structured grid inlet line. First compute k & k2 the first coordinate after 0.031 (up & down, going from leading edge)
+        # We want to cut the leading edge part for structured grid inlet line. First compute k & k2 the first coordinate after 0.031 (up & down, counting from leading edge)
         for p in airfoil_spline.points:
             if p.x > 0.031:
                 k = airfoil_spline.points.index(p)
