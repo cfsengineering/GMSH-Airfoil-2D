@@ -5,7 +5,7 @@
 
 # GMSH-Airfoil-2D
 
-Python tool to genreate 2D unstructured mesh around an airfoil with [GMSH](https://gmsh.info/) in one command line.
+Python tool to genreate 2D unstructured, hybrid and structured mesh around an airfoil with [GMSH](https://gmsh.info/) in one command line.
 
 ## Installation
 
