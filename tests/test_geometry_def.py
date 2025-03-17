@@ -36,3 +36,6 @@ def test_mesh_rectangle():
         mesh_origin = f.read()
 
     assert mesh_test == mesh_origin
+
+
+test_mesh_rectangle()
