@@ -90,13 +90,13 @@ gmshairfoil2d --airfoil e211 --aoa 8 --box 12x4 --format vtk --ui --no_bl
 
 
 
-To create a boxed mesh around a NACA 11-H-09 airfoil (the name in the database is "n11h9"), using the boundary layer with default parameters (first layer of height 3e-5, 35 layers and growth ratio of 1.2)
+To create a boxed mesh around a Chuch Hollinger CH 10-48-13 smoothed airfoil (the name in the database is "ch10sm"), using the boundary layer with default parameters (first layer of height 3e-5, 35 layers and growth ratio of 1.2)
 
 ```bash
-gmshairfoil2d --airfoil n11h9 --ui --box 2x1.4
+gmshairfoil2d --airfoil ch10sm --ui --box 2x1.4
 ```
 
-![GMSH result with 2D mesh with boundary layer, rectangular box](images/example_n11h9_bl.png)
+![GMSH result with 2D mesh with boundary layer, rectangular box](images/example_ch10sm_bl.png)
 
 
 To create a structural mesh around a Naca 4220 airfoil (the 4 digits code is obviously "4220"), with first layer height of 0.01, leading length of 1, wake length of 7, height of 6, and angle of attack of 7 degrees

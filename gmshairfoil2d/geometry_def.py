@@ -694,7 +694,7 @@ class AirfoilSpline:
 
     def gen_skin(self):
         """
-        Method to generate the two splines forming the foil, Only call this function when the points
+        Method to generate the three splines forming the foil, Only call this function when the points
         of the airfoil are in their final position
         -------
         """
@@ -719,6 +719,22 @@ class AirfoilSpline:
 
         # Create a spline for the front part of the airfoil
         self.front_spline = Spline(self.points[k2:]+self.points[:k1+1])
+        return self.upper_spline, self.lower_spline
+
+    def gen_skin_struct(self):
+        """
+        Method to generate the two splines forming the foil for structural mesh, Only call this function when the points
+        of the airfoil are in their final position
+        -------
+        """
+        # create a spline from the up middle point to the trailing edge (up part)
+        self.upper_spline = Spline(
+            self.points[self.le_indx: self.te_indx + 1])
+
+        # create a spline from the trailing edge to the up down point (down part)
+        self.lower_spline = Spline(
+            self.points[self.te_indx:]+self.points[:self.le_indx+1]
+        )
         return self.upper_spline, self.lower_spline
 
     def close_loop(self):
@@ -878,7 +894,7 @@ class CType:
                 break
 
         # Then split the splines : find the points where you want to split and split
-        upper_spline, lower_spline = self.airfoil_spline.gen_skin()
+        upper_spline, lower_spline = self.airfoil_spline.gen_skin_struct()
         self.le_upper_point = sorted(
             upper_spline.point_list, key=lambda p: p.x)[k]
         self.le_lower_point = sorted(
