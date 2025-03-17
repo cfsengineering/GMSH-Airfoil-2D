@@ -202,7 +202,6 @@ def main():
     airfoil = AirfoilSpline(
         cloud_points, args.airfoil_mesh_size)
     airfoil.rotation(aoa, (0.5, 0, 0), (0, 0, 1))
-    airfoil.gen_skin()
     gmsh.model.geo.synchronize()
 
     # If structural, all is done in CType
@@ -213,6 +212,7 @@ def main():
                            args.ext_mesh_size, args.first_layer, args.ratio)
 
     else:
+        k1, k2 = airfoil.gen_skin()
         # Choose the parameters for bl (when exist)
         if not args.no_bl:
             N = args.nb_layers
@@ -237,15 +237,12 @@ def main():
                                 mesh_size=args.ext_mesh_size)
         gmsh.model.geo.synchronize()
 
-        # Create the surface for the triangular mesh
+        # Create the surface for the mesh
         surface = PlaneSurface([ext_domain, airfoil])
         gmsh.model.geo.synchronize()
 
         # Create the boundary layer
         if not args.no_bl:
-            # curv = [airfoil.upper_spline.tag,
-            #        airfoil.lower_spline.tag, airfoil.down_front_spline.tag, airfoil.up_front_spline.tag]
-            # curv = [airfoil.upper_spline.tag, airfoil.lower_spline.tag]
             curv = [airfoil.upper_spline.tag,
                     airfoil.lower_spline.tag, airfoil.front_spline.tag]
 
@@ -278,13 +275,21 @@ def main():
     # Choose the parameters of the mesh : we want the mesh size according to the points and not curvature (doesn't work with farfield)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
-    # Add transfinite line on the front to get more point in the middle (where the curvature of the le makes it usually more spaced)
-    gmsh.model.mesh.setTransfiniteCurve(
-        airfoil.front_spline.tag, int(0.25/args.airfoil_mesh_size), "Bump", 12)
-    # Choose the nbs of points in the fan at the te:
-    # Compute coef : between 10 and 25, 15 when usual mesh size but adapted to mesh size
-    coef = max(10, min(25, 15*0.01/args.airfoil_mesh_size))
-    gmsh.option.setNumber("Mesh.BoundaryLayerFanElements", coef)
+    if not args.structural and not args.no_bl:
+        # Add transfinite line on the front to get more point in the middle (where the curvature of the le makes it usually more spaced)
+        x, y, v, w = airfoil.points[k1].x, airfoil.points[k2].y, airfoil.points[k1].x, airfoil.points[k2].y
+        c1, c2 = airfoil.le.x, airfoil.le.y
+        # To get an indication of numbers of points needed, compute approximate length of curve of front spline
+        l = (math.sqrt((x-c1)*(x-c1)+(y-c2)*(y-c2)) +
+             math.sqrt((v-c1)*(v-c1)+(w-c2)*(w-c2)))
+        # As points will be more near than mesh size on the front, need more points
+        nb_points = int(3.5*l/args.airfoil_mesh_size)
+        gmsh.model.mesh.setTransfiniteCurve(
+            airfoil.front_spline.tag, nb_points, "Bump", 10)
+        # Choose the nbs of points in the fan at the te:
+        # Compute coef : between 10 and 25, 15 when usual mesh size but adapted to mesh size
+        coef = max(10, min(25, 15*0.01/args.airfoil_mesh_size))
+        gmsh.option.setNumber("Mesh.BoundaryLayerFanElements", coef)
 
     # Generate mesh
     gmsh.model.mesh.generate(2)

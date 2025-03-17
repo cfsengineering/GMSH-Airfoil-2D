@@ -719,7 +719,7 @@ class AirfoilSpline:
 
         # Create a spline for the front part of the airfoil
         self.front_spline = Spline(self.points[k2:]+self.points[:k1+1])
-        return self.upper_spline, self.lower_spline
+        return k1, k2
 
     def gen_skin_struct(self):
         """
@@ -1030,7 +1030,7 @@ class CType:
         gmsh.model.geo.mesh.setTransfiniteCurve(
             self.lines[8].tag, nb_points_y, "Progression", progression_y)  # same for plane C
         gmsh.model.geo.mesh.setTransfiniteCurve(
-            upper_spline_back, nb_airfoil, "Bump", 0.2)
+            upper_spline_back, nb_airfoil, "Bump", 0.35)
 
         # transfinite curve C
         gmsh.model.geo.mesh.setTransfiniteCurve(
@@ -1050,7 +1050,7 @@ class CType:
 
         # transfinite curve E
         gmsh.model.geo.mesh.setTransfiniteCurve(
-            lower_spline_back, nb_airfoil, "Bump", 0.2)
+            lower_spline_back, nb_airfoil, "Bump", 0.35)
         gmsh.model.geo.mesh.setTransfiniteCurve(self.lines[6].tag, nb_airfoil)
 
         # Now we add the surfaces
