@@ -75,7 +75,7 @@ def main():
         metavar="SIZE",
         nargs="?",
         default=0.01,
-        help="Mesh size of the airfoil contour [m]  (default 0.01m)",
+        help="Mesh size of the airfoil contour [m]  (default 0.01m) (for normal, bl and structural)",
     )
 
     parser.add_argument(
@@ -84,7 +84,7 @@ def main():
         metavar="SIZE",
         nargs="?",
         default=0.2,
-        help="Mesh size of the external domain [m] (default 0.2m) (for normal, bl and structural)",
+        help="Mesh size of the external domain [m] (default 0.2m)",
     )
 
     parser.add_argument(
@@ -136,9 +136,9 @@ def main():
     parser.add_argument(
         "--arg_struc",
         type=str,
-        metavar="[LxLxL]",
-        default="1x10x10",
-        help="Parameters for the structural mesh [leading (axis x)]x[wake (axis x)]x[total height (axis y)] [m] (default 1x10x10)",
+        metavar="[LxL]",
+        default="10x10",
+        help="Parameters for the structural mesh [wake length (axis x)]x[total height (axis y)] [m] (default 10x10)",
     )
 
     parser.add_argument(
@@ -206,10 +206,9 @@ def main():
 
     # If structural, all is done in CType
     if args.structural:
-        dx_lead, dx_wake, dy = [float(value)
-                                for value in args.arg_struc.split("x")]
-        ext_domain = CType(airfoil, dx_lead, dx_wake, dy,
-                           args.ext_mesh_size, args.first_layer, args.ratio)
+        dx_wake, dy = [float(value)for value in args.arg_struc.split("x")]
+        ext_domain = CType(airfoil, dx_wake, dy,
+                           args.airfoil_mesh_size, args.first_layer, args.ratio)
 
     else:
         k1, k2 = airfoil.gen_skin()
