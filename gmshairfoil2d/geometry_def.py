@@ -872,7 +872,7 @@ class CType:
     A class to represent a C-type structured mesh.
     """
 
-    def __init__(self, airfoil_spline, dx_trail, dy, mesh_size, height, ratio):
+    def __init__(self, airfoil_spline, dx_trail, dy, mesh_size, height, ratio, aoa):
         z = 0
         self.airfoil_spline = airfoil_spline
 
@@ -884,6 +884,10 @@ class CType:
         # so that the mesh size is right mostly on the middle of the airfoil
         mesh_size_end = mesh_size*2
         self.mesh_size_end = mesh_size_end
+
+        self.firstheight = height
+        self.ratio = ratio
+        self.aoa = aoa
 
         # First compute k1 & k2 the first coordinate after 0.041 (up & down)
         debut = True
@@ -932,12 +936,20 @@ class CType:
             k2-1].x, airfoil_spline.points[k2-1].y, airfoil_spline.points[k2+1].x, airfoil_spline.points[k2+1].y
         directionupx, directionupy, directiondownx, directiondowny = yupbefore - \
             yupafter, xupafter-xupbefore, ydownafter-ydownbefore, xdownbefore-xdownafter
+        # As the points coordinates we get are not rotated, we need to change it by hand
+        cos, sin = math.cos(aoa), math.sin(aoa)
+        directionupx, directionupy, directiondownx, directiondowny = cos*directionupx-sin * directionupy, sin * \
+            directionupx+cos * directionupy, cos*directiondownx-sin * \
+            directiondowny, sin*directiondownx+cos * directiondowny
+        xup, yup, xdown, ydown = cos*xup-sin*yup, sin*xup + \
+            cos*yup, cos*xdown-sin*ydown, sin*xdown+cos*ydown
+
         # Then compute where the line in this direction going from point[k1] intersect the line y=dy/2 (i.e. the horizontal line where we want L1)
         pt1x, pt1y, pt7x, pt7y = xup+(dy/2-yup)/directionupy*directionupx, dy/2, xdown + \
             (0-dy/2-ydown)/directiondowny*directiondownx, -dy/2
-        # Check that the line doesn't go "back", and in this case constrain it to not go farther than le
-        pt1x = min(pt1x, airfoil_spline.le.x)
-        pt7x = min(pt7x, airfoil_spline.le.x)
+        # Check that the line doesn't go "back" or "too far", and constrain it to go between le-0.5 and le-3.5
+        pt1x = max(min(pt1x, airfoil_spline.le.x-0.5), airfoil_spline.le.x-3.5)
+        pt7x = max(min(pt7x, airfoil_spline.le.x-0.5), airfoil_spline.le.x-3.5)
         # Compute the center of the circle : we want a x coordinate of 0.5, and compute cy so that p1 and p7 are at same distance from the (0.5,cy)
         centery = (pt1y+pt7y)/2 + (0.5-(pt1x+pt7x)/2)/(pt1y-pt7y)*(pt7x-pt1x)
 
@@ -1050,13 +1062,13 @@ class CType:
             spline_front, nb_airfoil_front, "Bump", 4)
         gmsh.model.geo.mesh.setTransfiniteCurve(
             self.lines[0].tag, nb_points_y, "Progression", progression_y)  # same for plane B
-        if mesh_size_end > 0.02:
+        if mesh_size_end > 0.1:
             gmsh.model.geo.mesh.setTransfiniteCurve(
-                circle_arc, nb_airfoil_front, "Bump", 1/8)
+                circle_arc, nb_airfoil_front, "Bump", 1/4)
         else:
             # If mesh size smaller, we have much more points and need different coefficient
             gmsh.model.geo.mesh.setTransfiniteCurve(
-                circle_arc, nb_airfoil_front, "Bump", 1/12)
+                circle_arc, nb_airfoil_front, "Bump", 1/8)
 
         # transfinite curve B
         gmsh.model.geo.mesh.setTransfiniteCurve(
@@ -1067,7 +1079,7 @@ class CType:
         if pt1x < airfoil_spline.le.x-1.5:
             gmsh.model.geo.mesh.setTransfiniteCurve(
                 self.lines[1].tag, nb_airfoil, "Progression", 1/ratio_airfoil)
-        elif pt1x < airfoil_spline.le.x-0.4:
+        elif pt1x < airfoil_spline.le.x-0.7:
             gmsh.model.geo.mesh.setTransfiniteCurve(
                 self.lines[1].tag, nb_airfoil, "Progression", 1/math.sqrt(ratio_airfoil))
         else:

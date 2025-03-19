@@ -208,7 +208,7 @@ def main():
     if args.structural:
         dx_wake, dy = [float(value)for value in args.arg_struc.split("x")]
         ext_domain = CType(airfoil, dx_wake, dy,
-                           args.airfoil_mesh_size, args.first_layer, args.ratio)
+                           args.airfoil_mesh_size, args.first_layer, args.ratio, aoa)
 
     else:
         k1, k2 = airfoil.gen_skin()
