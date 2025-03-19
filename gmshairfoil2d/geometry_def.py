@@ -1048,13 +1048,9 @@ class CType:
         c1, c2 = airfoil_spline.le.x, airfoil_spline.le.y
         estim_length = (math.sqrt((x-c1)*(x-c1)+(y-c2)*(y-c2)) +
                         math.sqrt((v-c1)*(v-c1)+(w-c2)*(w-c2)))+0.01
-        # Compute nb of points if they were all same size, multiply par a factor (3 or 5) to have an okay number (and good when apply bump)
-        if mesh_size_end >= 0.025:
-            coefmult = 3
-        else:
-            coefmult = 5
+        # Compute nb of points if they were all same size, multiply par a factor (3) to have an okay number (and good when apply bump)
         nb_airfoil_front = max(
-            4, int(estim_length/mesh_size_end*coeffdiv*coefmult))+4
+            4, int(estim_length/mesh_size_end*coeffdiv*3))+4
 
         # Now we set all the corresponding transfinite curve we need (with our coefficient computed before)
 
