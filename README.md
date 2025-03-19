@@ -99,10 +99,10 @@ gmshairfoil2d --airfoil ch10sm --ui --box 2x1.4
 ![GMSH result with 2D mesh with boundary layer, rectangular box](images/example_ch10sm_bl.png)
 
 
-To create a structural mesh around a Naca 4220 airfoil (the 4 digits code is obviously "4220"), with first layer height of 0.01, leading length of 1, wake length of 6, height of 7, and angle of attack of 7 degrees :
+To create a structural mesh around a Naca 4220 airfoil (the 4 digits code is obviously "4220"), with first layer height of 0.01, mesh_size of 0.08 wake length of 6, height of 7, and angle of attack of 6 degrees :
 
 ```bash
- gmshairfoil2d --naca 4220 --ui --structural --first_layer 0.01 --arg_struc 1x6x7 --aoa 7
+ gmshairfoil2d --naca 4220 --airfoil_mesh_size 0.08 --ui --structural --first_layer 0.01 --arg_struc 6x7 --aoa 6
 ```
 
 ![GMSH result with 2D structural mesh](images/example_structural_naca4220.png)
