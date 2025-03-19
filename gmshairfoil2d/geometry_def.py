@@ -947,9 +947,11 @@ class CType:
         # Then compute where the line in this direction going from point[k1] intersect the line y=dy/2 (i.e. the horizontal line where we want L1)
         pt1x, pt1y, pt7x, pt7y = xup+(dy/2-yup)/directionupy*directionupx, dy/2, xdown + \
             (0-dy/2-ydown)/directiondowny*directiondownx, -dy/2
-        # Check that the line doesn't go "back" or "too far", and constrain it to go between le-0.5 and le-3.5
-        pt1x = max(min(pt1x, airfoil_spline.le.x-0.5), airfoil_spline.le.x-3.5)
-        pt7x = max(min(pt7x, airfoil_spline.le.x-0.5), airfoil_spline.le.x-3.5)
+        # Check that the line doesn't go "back" or "too far", and constrain it to go between le-0.05*dy and le-3.5
+        pt1x = max(min(pt1x, airfoil_spline.le.x-0.05*dy),
+                   airfoil_spline.le.x-3.5)
+        pt7x = max(min(pt7x, airfoil_spline.le.x-0.05*dy),
+                   airfoil_spline.le.x-3.5)
         # Compute the center of the circle : we want a x coordinate of 0.5, and compute cy so that p1 and p7 are at same distance from the (0.5,cy)
         centery = (pt1y+pt7y)/2 + (0.5-(pt1x+pt7x)/2)/(pt1y-pt7y)*(pt7x-pt1x)
 
@@ -1065,8 +1067,12 @@ class CType:
                 spline_front, nb_airfoil_front, "Bump", 7)
         gmsh.model.geo.mesh.setTransfiniteCurve(
             self.lines[0].tag, nb_points_y, "Progression", progression_y)  # same for plane B
-        # Because of different length of L1 and L6, need a bigger coefficient when point 1 and 7 are really far
+        # Because of different length of L1 and L6, need a bigger coefficient when point 1 and 7 are really far (coef is 1 when far and 9 when close)
         coef = 8/3*(pt1x+pt7x)/2+31/3
+        if dy < 6:
+            coef = (coef+2)/3
+        if dy <= 3:
+            coef = (coef + 2)/3
         gmsh.model.geo.mesh.setTransfiniteCurve(
             circle_arc, nb_airfoil_front, "Bump", 1/coef)
 
