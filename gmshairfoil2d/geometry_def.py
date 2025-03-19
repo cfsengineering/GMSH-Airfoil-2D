@@ -1035,7 +1035,10 @@ class CType:
         a, b, l = mesh_size_end/coeffdiv, mesh_size_end, airfoil_spline.te.x
         # So compute ratio and nb of points accordingly: (solve l=a+a*r+a*r^2+a*r^(N-1) and a*r^(N-1)=b, and N=nb of intervals=nb of points-1)
         ratio_airfoil = (l-a)/(l-b)
-        nb_airfoil = int(math.log(b/a)/math.log(ratio_airfoil))+2
+        if l-b < 0:
+            nb_airfoil = 3
+        else:
+            nb_airfoil = max(3, int(math.log(b/a)/math.log(ratio_airfoil))+2)
 
         # AIRFOIL FRONT
         # Now we can try to put the good number of point on the front to have a good mesh
@@ -1058,17 +1061,18 @@ class CType:
         # transfinite curve A
         gmsh.model.geo.mesh.setTransfiniteCurve(
             self.lines[7].tag, nb_points_y, "Progression", progression_y_inv)  # same for plane E
-        gmsh.model.geo.mesh.setTransfiniteCurve(
-            spline_front, nb_airfoil_front, "Bump", 4)
+        if mesh_size_end < 0.04:
+            gmsh.model.geo.mesh.setTransfiniteCurve(
+                spline_front, nb_airfoil_front, "Bump", 12)
+        else:
+            gmsh.model.geo.mesh.setTransfiniteCurve(
+                spline_front, nb_airfoil_front, "Bump", 7)
         gmsh.model.geo.mesh.setTransfiniteCurve(
             self.lines[0].tag, nb_points_y, "Progression", progression_y)  # same for plane B
-        if mesh_size_end > 0.1:
-            gmsh.model.geo.mesh.setTransfiniteCurve(
-                circle_arc, nb_airfoil_front, "Bump", 1/4)
-        else:
-            # If mesh size smaller, we have much more points and need different coefficient
-            gmsh.model.geo.mesh.setTransfiniteCurve(
-                circle_arc, nb_airfoil_front, "Bump", 1/8)
+        # Because of different length of L1 and L6, need a bigger coefficient when point 1 and 7 are really far
+        coef = 8/3*(pt1x+pt7x)/2+31/3
+        gmsh.model.geo.mesh.setTransfiniteCurve(
+            circle_arc, nb_airfoil_front, "Bump", 1/coef)
 
         # transfinite curve B
         gmsh.model.geo.mesh.setTransfiniteCurve(
