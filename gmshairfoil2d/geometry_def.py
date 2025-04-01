@@ -598,9 +598,9 @@ class AirfoilSpline:
         each point is a list containing in the order
         its position x,y,z
     mesh_size : float
-        attribute given for the class Point,Note that a mesh size larger
-        than the resolution given by the cloud of points TODO
-        will not be taken into account
+        attribute given for the class Point, (Note that a mesh size larger
+        than the resolution given by the cloud of points
+        will not be taken into account --> Not implemented)
     name : str
         name of the marker that will be associated to the airfoil
         boundary condition
@@ -698,7 +698,7 @@ class AirfoilSpline:
         of the airfoil are in their final position
         -------
         """
-        # Find the first point after 0.069 in the upper band lower spline
+        # Find the first point after 0.049 in the upper band lower spline
         debut = True
         for p in self.points:
             if p.x > 0.049 and debut:
@@ -719,6 +719,7 @@ class AirfoilSpline:
 
         # Create a spline for the front part of the airfoil
         self.front_spline = Spline(self.points[k2:]+self.points[:k1+1])
+
         return k1, k2
 
     def gen_skin_struct(self, k1, k2):
@@ -755,7 +756,8 @@ class AirfoilSpline:
         """
 
         self.bc = gmsh.model.addPhysicalGroup(
-            self.dim, [self.upper_spline.tag, self.lower_spline.tag]
+            self.dim, [self.upper_spline.tag,
+                       self.lower_spline.tag, self.front_spline.tag]
         )
         gmsh.model.setPhysicalName(self.dim, self.bc, self.name)
 
@@ -835,7 +837,7 @@ def outofbounds(airfoil, box, radius, blthick):
         box (string):
             the box arguments received by the parser (float x float)
         radius (float):
-            radius of the farfield (when needed)
+            radius of the farfield
         blthick (float):
             total thickness of the boundary layer (0 for mesh without bl)
     """
@@ -880,7 +882,7 @@ class CType:
         self.dy = dy
 
         self.mesh_size = mesh_size
-        # Because all the compitations are based on the mesh size at the trailing edge which is the biggest accross the whole aiurfoil, we take it bigger
+        # Because all the computations are based on the mesh size at the trailing edge which is the biggest accross the whole airfoil, we take it bigger
         # so that the mesh size is right mostly on the middle of the airfoil
         mesh_size_end = mesh_size*2
         self.mesh_size_end = mesh_size_end
@@ -910,6 +912,7 @@ class CType:
         points_front = lower_points_front + upper_points_front
         points_front_tag = [point.tag for point in points_front]
         spline_front = gmsh.model.geo.addSpline(points_front_tag)
+        self.spline_front, self.upper_spline_back, self.lower_spline_back = spline_front, upper_spline_back, lower_spline_back
 
         # Create points on the outside domain (& center point)
         #        p1                      p2                p3
@@ -988,7 +991,7 @@ class CType:
         ]
 
         # Circle arc for C shape at the front
-        circle_arc = gmsh.model.geo.addCircleArc(
+        self.circle_arc = gmsh.model.geo.addCircleArc(
             self.points[7].tag, self.points[0].tag, self.points[1].tag)
 
         # planar surfaces for structured grid are named from A-E
@@ -1074,7 +1077,7 @@ class CType:
         if dy <= 3:
             coef = (coef + 2)/3
         gmsh.model.geo.mesh.setTransfiniteCurve(
-            circle_arc, nb_airfoil_front, "Bump", 1/coef)
+            self.circle_arc, nb_airfoil_front, "Bump", 1/coef)
 
         # transfinite curve B
         gmsh.model.geo.mesh.setTransfiniteCurve(
@@ -1125,38 +1128,62 @@ class CType:
         # Now we add the surfaces
 
         # transfinite surface A (forces structured mesh)
-        gmsh.model.geo.addCurveLoop(
-            [self.lines[7].tag, spline_front, self.lines[0].tag, - circle_arc], 1)
-        gmsh.model.geo.addPlaneSurface([1], 1)
-        gmsh.model.geo.mesh.setTransfiniteSurface(1)
+        c1 = gmsh.model.geo.addCurveLoop(
+            [self.lines[7].tag, spline_front, self.lines[0].tag, - self.circle_arc])
+        surf1 = gmsh.model.geo.addPlaneSurface([c1])
+        gmsh.model.geo.mesh.setTransfiniteSurface(surf1)
 
         # transfinite surface B
-        gmsh.model.geo.addCurveLoop(
-            [self.lines[0].tag, self.lines[1].tag, - self.lines[8].tag, - upper_spline_back.tag], 2)
-        gmsh.model.geo.addPlaneSurface([2], 2)
-        gmsh.model.geo.mesh.setTransfiniteSurface(2)
+        c2 = gmsh.model.geo.addCurveLoop(
+            [self.lines[0].tag, self.lines[1].tag, - self.lines[8].tag, - upper_spline_back.tag])
+        surf2 = gmsh.model.geo.addPlaneSurface([c2])
+        gmsh.model.geo.mesh.setTransfiniteSurface(surf2)
 
         # transfinite surface C
-        gmsh.model.geo.addCurveLoop(
-            [self.lines[8].tag, self.lines[2].tag, self.lines[3].tag, self.lines[10].tag], 3)
-        gmsh.model.geo.addPlaneSurface([3], 3)
-        gmsh.model.geo.mesh.setTransfiniteSurface(3)
+        c3 = gmsh.model.geo.addCurveLoop(
+            [self.lines[8].tag, self.lines[2].tag, self.lines[3].tag, self.lines[10].tag])
+        surf3 = gmsh.model.geo.addPlaneSurface([c3])
+        gmsh.model.geo.mesh.setTransfiniteSurface(surf3)
 
         # transfinite surface D
-        gmsh.model.geo.addCurveLoop(
-            [- self.lines[9].tag, - self.lines[10].tag, self.lines[4].tag, self.lines[5].tag], 4)
-        gmsh.model.geo.addPlaneSurface([4], 4)
-        gmsh.model.geo.mesh.setTransfiniteSurface(4)
+        c4 = gmsh.model.geo.addCurveLoop(
+            [- self.lines[9].tag, - self.lines[10].tag, self.lines[4].tag, self.lines[5].tag])
+        surf4 = gmsh.model.geo.addPlaneSurface([c4])
+        gmsh.model.geo.mesh.setTransfiniteSurface(surf4)
 
         # transfinite surface E
-        gmsh.model.geo.addCurveLoop(
-            [self.lines[7].tag, - lower_spline_back.tag, self.lines[9].tag, self.lines[6].tag], 5)
-        gmsh.model.geo.addPlaneSurface([5], 5)
-        gmsh.model.geo.mesh.setTransfiniteSurface(5)
+        c5 = gmsh.model.geo.addCurveLoop(
+            [self.lines[7].tag, - lower_spline_back.tag, self.lines[9].tag, self.lines[6].tag])
+        surf5 = gmsh.model.geo.addPlaneSurface([c5])
+        gmsh.model.geo.mesh.setTransfiniteSurface(surf5)
+        self.curveloops = [c1, c2, c3, c4, c5]
+        self.surfaces = [surf1, surf2, surf3, surf4, surf5]
 
         # Lastly, recombine surface to create quadrilateral elements
-        gmsh.model.geo.mesh.setRecombine(2, 1, 90)
-        gmsh.model.geo.mesh.setRecombine(2, 2, 90)
-        gmsh.model.geo.mesh.setRecombine(2, 3, 90)
-        gmsh.model.geo.mesh.setRecombine(2, 4, 90)
-        gmsh.model.geo.mesh.setRecombine(2, 5, 90)
+        gmsh.model.geo.mesh.setRecombine(2, surf1, 90)
+        gmsh.model.geo.mesh.setRecombine(2, surf2, 90)
+        gmsh.model.geo.mesh.setRecombine(2, surf3, 90)
+        gmsh.model.geo.mesh.setRecombine(2, surf4, 90)
+        gmsh.model.geo.mesh.setRecombine(2, surf5, 90)
+
+    def define_bc(self):
+        """
+        Method that define the domain marker of the surface, the airfoil and the farfield
+        -------
+        """
+
+        # Airfoil
+        self.bc = gmsh.model.addPhysicalGroup(
+            1, [self.upper_spline_back.tag,
+                self.lower_spline_back.tag, self.spline_front]
+        )
+        gmsh.model.setPhysicalName(1, self.bc, "airfoil")
+
+        # Farfield
+        self.bc = gmsh.model.addPhysicalGroup(1, [self.lines[1].tag, self.lines[2].tag,
+                                                  self.lines[3].tag, self.lines[4].tag, self.lines[5].tag, self.lines[6].tag, self.circle_arc])
+        gmsh.model.setPhysicalName(1, self.bc, "farfield")
+
+        # Surface
+        self.bc = gmsh.model.addPhysicalGroup(2, self.surfaces)
+        gmsh.model.setPhysicalName(2, self.bc, "fluid")
