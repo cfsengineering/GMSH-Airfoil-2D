@@ -6,10 +6,11 @@ import math
 import sys
 from pathlib import Path
 import numpy as np
+import os
 
 import gmsh
 from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_points,
-                                        get_all_available_airfoil_names)
+                                        get_all_available_airfoil_names, read_airfoil_from_file)
 from gmshairfoil2d.geometry_def import (AirfoilSpline, Circle, PlaneSurface,
                                         Rectangle, outofbounds, CType)
 
@@ -155,6 +156,15 @@ def main():
         action="store_true",
         help="Open GMSH user interface to see the mesh",
     )
+
+    parser.add_argument(
+        "--airfoil_path",
+        type=str,
+        metavar="PATH",
+        nargs="?",
+        default=".",
+        help="Path to a custom .dat file with airfoil coordinates",
+    )
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
@@ -167,13 +177,19 @@ def main():
 
     # Airfoil choice
     cloud_points = None
+    airfoil_name = None
+
     if args.naca:
         airfoil_name = args.naca
         cloud_points = NACA_4_digit_geom(airfoil_name)
 
-    if args.airfoil:
+    elif args.airfoil:
         airfoil_name = args.airfoil
         cloud_points = get_airfoil_points(airfoil_name)
+
+    elif args.airfoil_path:
+        airfoil_name = Path(args.airfoil_path).stem
+        cloud_points = read_airfoil_from_file(args.airfoil_path)
 
     if cloud_points is None:
         print("\nNo airfoil profile specified, exiting")
@@ -300,6 +316,9 @@ def main():
         gmsh.fltk.run()
 
     # Mesh file name and output
+    if airfoil_name:
+        airfoil_name = airfoil_name.replace(".dat", "")
+
     mesh_path = Path(
         args.output, f"mesh_airfoil_{airfoil_name}.{args.format}")
     gmsh.write(str(mesh_path))

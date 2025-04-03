@@ -9,6 +9,64 @@ LIB_DIR = Path(gmshairfoil2d.__init__.__file__).parents[1]
 database_dir = Path(LIB_DIR, "database")
 
 
+def read_airfoil_from_file(file_path):
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"File {file_path} not found.")
+
+    airfoil_points = []
+    upper_len = 0
+    lower_len = 0
+    reverse_lower = False
+
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith(('#', 'Airfoil')):
+            continue
+
+        parts = line.split()
+        if len(parts) != 2:
+            continue
+
+        try:
+            x, y = map(float, parts)
+        except ValueError:
+            continue
+
+        if x > 1 and y > 1:
+            upper_len = int(x)
+            lower_len = int(y)
+            continue
+
+        airfoil_points.append((x, y))
+
+    n_points = len(airfoil_points)
+
+    split_index = next(i for i, (x, y) in enumerate(airfoil_points) if x >= 1.0)
+    upper_points = airfoil_points[:split_index+1]
+    lower_points = airfoil_points[split_index+1:]
+
+    if lower_points and lower_points[0][0] == 0.0:
+        lower_points = lower_points[::-1]
+
+    if lower_points and lower_points[0][0] == 0.0:
+        lower_points = lower_points[::-1]
+
+    x_up, y_up = zip(*upper_points) if upper_points else ([], [])
+    x_lo, y_lo = zip(*lower_points) if lower_points else ([], [])
+
+    x = list(x_up) + list(x_lo)
+    y = list(y_up) + list(y_lo)
+
+    cloud_points = [(x[k], y[k], 0) for k in range(len(x))]
+    unique_points = sorted(set(cloud_points), key=cloud_points.index)
+
+    return unique_points
+
+
 def get_all_available_airfoil_names():
     """
     Request the airfoil list available at m-selig.ae.illinois.edu
