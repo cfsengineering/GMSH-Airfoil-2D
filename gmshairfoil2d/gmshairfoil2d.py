@@ -317,7 +317,8 @@ def main():
         ext_domain.define_bc()
         surface.define_bc()
         airfoil.define_bc()
-        flap.define_bc()
+        if args.flap_path:
+            flap.define_bc()
 
     gmsh.model.geo.synchronize()
 
