@@ -281,8 +281,9 @@ def main():
         gmsh.model.geo.synchronize()
 
         # Create the surface for the mesh
-        # surface = PlaneSurface([ext_domain, airfoil])
-        surface = PlaneSurface([ext_domain, airfoil, flap])
+        surface = PlaneSurface([ext_domain, airfoil])
+        if args.flap_path:
+            surface = PlaneSurface([ext_domain, airfoil, flap])
         gmsh.model.geo.synchronize()
 
         # Create the boundary layer
