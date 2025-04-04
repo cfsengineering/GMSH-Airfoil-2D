@@ -241,6 +241,8 @@ def main():
         flap = AirfoilSpline(
             flap_points, args.airfoil_mesh_size, name="flap", is_flap=True)
         flap.rotation(aoa, (0.5, 0, 0), (0, 0, 1))
+        if args.deflection:
+            flap.rotation(-args.deflection * (math.pi / 180), (flap.le.x, flap.le.y, 0), (0, 0, 1))
         gmsh.model.geo.synchronize()
 
     # If structural, all is done in CType
