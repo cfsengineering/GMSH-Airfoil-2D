@@ -48,10 +48,32 @@ def main():
     )
 
     parser.add_argument(
+        "--airfoil_path",
+        type=str,
+        metavar="PATH",
+        help="Path to a custom .dat file with airfoil coordinates",
+    )
+
+    parser.add_argument(
+        "--flap_path",
+        type=str,
+        metavar="PATH",
+        help="Path to a custom .dat file with flap coordinates",
+    )
+
+    parser.add_argument(
         "--aoa",
         type=float,
         nargs="?",
         help="Angle of attack [deg] (default: 0 [deg])",
+        default=0.0,
+    )
+
+    parser.add_argument(
+        "--deflection",
+        type=float,
+        nargs="?",
+        help="Angle of flap deflection [deg] (default: 0 [deg])",
         default=0.0,
     )
 
@@ -156,15 +178,6 @@ def main():
         action="store_true",
         help="Open GMSH user interface to see the mesh",
     )
-
-    parser.add_argument(
-        "--airfoil_path",
-        type=str,
-        metavar="PATH",
-        nargs="?",
-        default=".",
-        help="Path to a custom .dat file with airfoil coordinates",
-    )
     args = parser.parse_args()
 
     if len(sys.argv) == 1:
@@ -183,17 +196,21 @@ def main():
         airfoil_name = args.naca
         cloud_points = NACA_4_digit_geom(airfoil_name)
 
-    elif args.airfoil:
+    if args.airfoil:
         airfoil_name = args.airfoil
         cloud_points = get_airfoil_points(airfoil_name)
 
-    elif args.airfoil_path:
+    if args.airfoil_path:
         airfoil_name = Path(args.airfoil_path).stem
         cloud_points = read_airfoil_from_file(args.airfoil_path)
 
+        if args.flap_path:
+            airfoil_name = Path(args.airfoil_path).stem
+            flap_points = read_airfoil_from_file(args.flap_path)
+
     if cloud_points is None:
         print("\nNo airfoil profile specified, exiting")
-        print("You must use --naca or --airfoil\n")
+        print("You must use --naca --airfoil or --airfoil_path\n")
         parser.print_help()
         sys.exit()
 
@@ -216,9 +233,15 @@ def main():
 
     # Airfoil
     airfoil = AirfoilSpline(
-        cloud_points, args.airfoil_mesh_size)
+        cloud_points, args.airfoil_mesh_size, name="airfoil")
     airfoil.rotation(aoa, (0.5, 0, 0), (0, 0, 1))
     gmsh.model.geo.synchronize()
+
+    if args.flap_path:
+        flap = AirfoilSpline(
+            flap_points, args.airfoil_mesh_size, name="flap", is_flap=True)
+        flap.rotation(aoa, (0.5, 0, 0), (0, 0, 1))
+        gmsh.model.geo.synchronize()
 
     # If structural, all is done in CType
     if args.structural:
@@ -229,6 +252,8 @@ def main():
 
     else:
         k1, k2 = airfoil.gen_skin()
+        if args.flap_path:
+            k1_flap, k2_flap = flap.gen_skin()
         # Choose the parameters for bl (when exist)
         if not args.no_bl:
             N = args.nb_layers
@@ -254,13 +279,17 @@ def main():
         gmsh.model.geo.synchronize()
 
         # Create the surface for the mesh
-        surface = PlaneSurface([ext_domain, airfoil])
+        # surface = PlaneSurface([ext_domain, airfoil])
+        surface = PlaneSurface([ext_domain, airfoil, flap])
         gmsh.model.geo.synchronize()
 
         # Create the boundary layer
         if not args.no_bl:
             curv = [airfoil.upper_spline.tag,
                     airfoil.lower_spline.tag, airfoil.front_spline.tag]
+            if args.flap_path:
+                curv += [flap.upper_spline.tag,
+                         flap.lower_spline.tag, flap.front_spline.tag]
 
             # Creates a new mesh field of type 'BoundaryLayer' and assigns it an ID (f).
             f = gmsh.model.mesh.field.add('BoundaryLayer')
@@ -285,6 +314,7 @@ def main():
         ext_domain.define_bc()
         surface.define_bc()
         airfoil.define_bc()
+        flap.define_bc()
 
     gmsh.model.geo.synchronize()
 
@@ -318,6 +348,9 @@ def main():
     # Mesh file name and output
     if airfoil_name:
         airfoil_name = airfoil_name.replace(".dat", "")
+
+    if args.flap_path:
+        airfoil_name = airfoil_name + "_flap"
 
     mesh_path = Path(
         args.output, f"mesh_airfoil_{airfoil_name}.{args.format}")

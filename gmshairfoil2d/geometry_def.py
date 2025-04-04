@@ -606,11 +606,12 @@ class AirfoilSpline:
         boundary condition
     """
 
-    def __init__(self, point_cloud, mesh_size,  name="airfoil"):
+    def __init__(self, point_cloud, mesh_size,  name, is_flap=False):
 
         self.name = name
         self.dim = 1
         self.mesh_size = mesh_size
+        self.is_flap = is_flap
 
         # Generate Points object from the point_cloud
         self.points = [
@@ -694,31 +695,46 @@ class AirfoilSpline:
 
     def gen_skin(self):
         """
-        Method to generate the three splines forming the foil, Only call this function when the points
-        of the airfoil are in their final position
+        Method to generate the three splines forming the foil.
+        Only call this function when the points of the airfoil are in their final position.
         -------
         """
-        # Find the first point after 0.049 in the upper band lower spline
-        debut = True
-        for p in self.points:
-            if p.x > 0.049 and debut:
-                k1 = self.points.index(p)
-                debut = False
-            if p.x <= 0.049 and not debut:
-                k2 = self.points.index(p)-1
-                break
 
-        # create a spline from the up middle point to the trailing edge (up part)
-        self.upper_spline = Spline(
-            self.points[k1: self.te_indx + 1])
+        if getattr(self, "is_flap", False):  # Check if it's a flap
 
-        # create a spline from the trailing edge to the up down point (down part)
-        self.lower_spline = Spline(
-            self.points[self.te_indx:k2+1]
-        )
+            # Trova l'indice del punto con x minima
+            min_x_index = min(enumerate(self.points), key=lambda x: x[1].x)[0]
 
-        # Create a spline for the front part of the airfoil
-        self.front_spline = Spline(self.points[k2:]+self.points[:k1+1])
+            # Prendi 5 punti prima e dopo (con wrapping se necessario)
+            n = len(self.points)
+            k1 = (min_x_index - 5) % n
+            k2 = (min_x_index + 5) % n
+
+            # Assumiamo che i punti siano ordinati in senso antiorario
+            if k1 < k2:
+                self.upper_spline = Spline(self.points[k1:min_x_index + 1])
+                self.lower_spline = Spline(self.points[min_x_index:k2 + 1])
+                self.front_spline = Spline(self.points[k2:] + self.points[:k1 + 1])
+            else:
+                # caso in cui si supera la fine della lista (wrap-around)
+                self.upper_spline = Spline(self.points[k1:] + self.points[:min_x_index + 1])
+                self.lower_spline = Spline(self.points[min_x_index:] + self.points[:k2 + 1])
+                self.front_spline = Spline(self.points[k2:k1 + 1])  # attenzione qui, se serve invertire
+
+        else:
+            # Profilo normale
+            debut = True
+            for p in self.points:
+                if p.x > 0.049 and debut:
+                    k1 = self.points.index(p)
+                    debut = False
+                if p.x <= 0.049 and not debut:
+                    k2 = self.points.index(p)-1
+                    break
+
+            self.upper_spline = Spline(self.points[k1: self.te_indx + 1])
+            self.lower_spline = Spline(self.points[self.te_indx:k2+1])
+            self.front_spline = Spline(self.points[k2:] + self.points[:k1 + 1])
 
         return k1, k2
 
