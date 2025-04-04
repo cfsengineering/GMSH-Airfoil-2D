@@ -311,8 +311,13 @@ def main():
             gmsh.model.mesh.field.setNumber(f, 'Quads', 1)
 
             # Enter the points where we want a "fan" (points must be at end on line)(only te for us)
-            gmsh.model.mesh.field.setNumbers(
-                f, "FanPointsList", [airfoil.te.tag])
+            if args.flap_path:
+                print(f"airfoil.te.tag, flap.te.tag = {airfoil.te.tag, flap.te.tag}")
+                gmsh.model.mesh.field.setNumbers(
+                    f, "FanPointsList", [airfoil.te.tag, flap.te.tag])
+            else:
+                gmsh.model.mesh.field.setNumbers(
+                    f, "FanPointsList", [airfoil.te.tag])
 
             gmsh.model.mesh.field.setAsBoundaryLayer(f)
 

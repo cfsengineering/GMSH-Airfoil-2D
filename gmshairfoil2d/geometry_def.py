@@ -706,29 +706,21 @@ class AirfoilSpline:
         -------
         """
 
-        if getattr(self, "is_flap", False):  # Check if it's a flap
+        if getattr(self, "is_flap", False):
 
-            # Trova l'indice del punto con x minima
             min_x_index = min(enumerate(self.points), key=lambda x: x[1].x)[0]
+            max_x_index = max(enumerate(self.points), key=lambda x: x[1].x)[0]
+            max_x_index = len(self.points) - 1
 
-            # Prendi 5 punti prima e dopo (con wrapping se necessario)
             n = len(self.points)
             k1 = (min_x_index - 5) % n
             k2 = (min_x_index + 5) % n
 
-            # Assumiamo che i punti siano ordinati in senso antiorario
-            if k1 < k2:
-                self.upper_spline = Spline(self.points[k1:min_x_index + 1])
-                self.lower_spline = Spline(self.points[min_x_index:k2 + 1])
-                self.front_spline = Spline(self.points[k2:] + self.points[:k1 + 1])
-            else:
-                # caso in cui si supera la fine della lista (wrap-around)
-                self.upper_spline = Spline(self.points[k1:] + self.points[:min_x_index + 1])
-                self.lower_spline = Spline(self.points[min_x_index:] + self.points[:k2 + 1])
-                self.front_spline = Spline(self.points[k2:k1 + 1])  # attenzione qui, se serve invertire
+            self.upper_spline = Spline(self.points[max_x_index+1:] + self.points[:k1 + 1])
+            self.lower_spline = Spline(self.points[k2-1:] + self.points[:self.te_indx + 1])
+            self.front_spline = Spline(self.points[k1:k2])
 
         else:
-            # Profilo normale
             debut = True
             for p in self.points:
                 if p.x > 0.049 and debut:
