@@ -631,11 +631,17 @@ class AirfoilSpline:
         vertical = False
         # If two (in the end) are so close in coordinate x, they are vertical and not just neighbouring point (examples below)
         # Just need to check if the one before or after and then label them correctly
-        if self.points[self.te_indx-1].x > self.te.x-0.0001:
+        # Tollerance is the distance between the two points, might be necessary to change it
+        if is_flap:
+            tollerance = 0.001
+        else:
+            tollerance = 0.0001
+
+        if self.points[self.te_indx-1].x > self.te.x-tollerance:
             te_up_indx = self.te_indx-1
             te_down_indx = self.te_indx
             vertical = True
-        elif self.points[self.te_indx+1].x > self.te.x-0.0001:
+        elif self.points[self.te_indx+1].x > self.te.x-tollerance:
             te_up_indx = self.te_indx
             te_down_indx = self.te_indx+1
             vertical = True
