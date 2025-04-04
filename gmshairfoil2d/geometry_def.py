@@ -606,11 +606,12 @@ class AirfoilSpline:
         boundary condition
     """
 
-    def __init__(self, point_cloud, mesh_size,  name="airfoil"):
+    def __init__(self, point_cloud, mesh_size,  name, is_flap=False):
 
         self.name = name
         self.dim = 1
         self.mesh_size = mesh_size
+        self.is_flap = is_flap
 
         # Generate Points object from the point_cloud
         self.points = [
@@ -630,11 +631,17 @@ class AirfoilSpline:
         vertical = False
         # If two (in the end) are so close in coordinate x, they are vertical and not just neighbouring point (examples below)
         # Just need to check if the one before or after and then label them correctly
-        if self.points[self.te_indx-1].x > self.te.x-0.0001:
+        # Tollerance is the distance between the two points, might be necessary to change it
+        if is_flap:
+            tollerance = 0.001
+        else:
+            tollerance = 0.0001
+
+        if self.points[self.te_indx-1].x > self.te.x-tollerance:
             te_up_indx = self.te_indx-1
             te_down_indx = self.te_indx
             vertical = True
-        elif self.points[self.te_indx+1].x > self.te.x-0.0001:
+        elif self.points[self.te_indx+1].x > self.te.x-tollerance:
             te_up_indx = self.te_indx
             te_down_indx = self.te_indx+1
             vertical = True
@@ -694,31 +701,38 @@ class AirfoilSpline:
 
     def gen_skin(self):
         """
-        Method to generate the three splines forming the foil, Only call this function when the points
-        of the airfoil are in their final position
+        Method to generate the three splines forming the foil.
+        Only call this function when the points of the airfoil are in their final position.
         -------
         """
-        # Find the first point after 0.049 in the upper band lower spline
-        debut = True
-        for p in self.points:
-            if p.x > 0.049 and debut:
-                k1 = self.points.index(p)
-                debut = False
-            if p.x <= 0.049 and not debut:
-                k2 = self.points.index(p)-1
-                break
 
-        # create a spline from the up middle point to the trailing edge (up part)
-        self.upper_spline = Spline(
-            self.points[k1: self.te_indx + 1])
+        if getattr(self, "is_flap", False):
 
-        # create a spline from the trailing edge to the up down point (down part)
-        self.lower_spline = Spline(
-            self.points[self.te_indx:k2+1]
-        )
+            min_x_index = min(enumerate(self.points), key=lambda x: x[1].x)[0]
+            max_x_index = max(enumerate(self.points), key=lambda x: x[1].x)[0]
+            max_x_index = len(self.points) - 1
 
-        # Create a spline for the front part of the airfoil
-        self.front_spline = Spline(self.points[k2:]+self.points[:k1+1])
+            n = len(self.points)
+            k1 = (min_x_index - 5) % n
+            k2 = (min_x_index + 5) % n
+
+            self.upper_spline = Spline(self.points[max_x_index+1:] + self.points[:k1 + 1])
+            self.lower_spline = Spline(self.points[k2-1:] + self.points[:self.te_indx + 1])
+            self.front_spline = Spline(self.points[k1:k2])
+
+        else:
+            debut = True
+            for p in self.points:
+                if p.x > 0.049 and debut:
+                    k1 = self.points.index(p)
+                    debut = False
+                if p.x <= 0.049 and not debut:
+                    k2 = self.points.index(p)-1
+                    break
+
+            self.upper_spline = Spline(self.points[k1: self.te_indx + 1])
+            self.lower_spline = Spline(self.points[self.te_indx:k2+1])
+            self.front_spline = Spline(self.points[k2:] + self.points[:k1 + 1])
 
         return k1, k2
 
