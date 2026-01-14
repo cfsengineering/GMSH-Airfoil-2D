@@ -139,3 +139,4 @@ mesh.su2
 *.vtu
 *.cgns
 *.zip
+*.wrl
