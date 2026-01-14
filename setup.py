@@ -3,12 +3,12 @@ import setuptools
 
 NAME = "gmshairfoil2d"
 VERSION = "0.1.4"
-AUTHOR = "Aidan Jungo"
-EMAIL = "aidan.jungo@cfse.ch"
-DESCRIPTION = "Python tool to genreate 2D mesh around an airfoil"
+AUTHOR = "Giacomo Benedetti"
+EMAIL = "giacomo.benedetti@cfse.ch"
+DESCRIPTION = "Python tool to generate 2D mesh around an airfoil"
 LONG_DESCRIPTION = open("README.md").read()
 URL = "https://github.com/cfsengineering/GMSH-Airfoil-2D"
-REQUIRES_PYTHON = ">=3.6.0"
+REQUIRES_PYTHON = ">=3.11.0"
 
 lib_dir = Path(__file__).parent
 requirement_path = Path(lib_dir, "requirement.txt")
@@ -43,12 +43,7 @@ setuptools.setup(
     install_requires=REQUIRED,
     # See: https://pypi.org/classifiers/
     classifiers=[
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
         "Intended Audience :: Developers",
