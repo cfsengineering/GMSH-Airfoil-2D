@@ -13,7 +13,6 @@ database_dir = Path(LIB_DIR, "database")
 test_data_dir = Path(LIB_DIR, "tests", "test_data")
 
 def test_get_all_available_airfoil_names(monkeypatch):
-    # 1. Definiamo la risposta finta
     class MockResponse:
         def __init__(self):
             self.status_code = 200
@@ -27,48 +26,42 @@ def test_get_all_available_airfoil_names(monkeypatch):
                 '</html>'
             )
 
-    # 2. Applichiamo il patch direttamente (senza decoratori @)
-    # Sostituiamo requests.get nel modulo dove viene usato
     monkeypatch.setattr("gmshairfoil2d.airfoil_func.requests.get", lambda *args, **kwargs: MockResponse())
 
-    # 3. Chiamiamo la funzione
     from gmshairfoil2d.airfoil_func import get_all_available_airfoil_names
     current_airfoil_list = get_all_available_airfoil_names()
 
-    # 4. Asserzioni
     expected_airfoil = ["naca0010", "naca0018", "falcon", "goe510", "e1210"]
     for foil in expected_airfoil:
         assert foil in current_airfoil_list
 
 
-def test_get_airfoil_file():
+def test_get_airfoil_file(monkeypatch, tmp_path):
     """
-    Test if the download of some profiles is possible and if it is, check if
-    they are conform.
+    Testa il download (simulato) dei profili e verifica che il file 
+    venga salvato correttamente con il contenuto atteso.
     """
 
-    # Remove airfoil if they exist
-    for profile in ["naca0010", "naca4412"]:
-        
-        proflie_dl_path = Path(database_dir, profile + ".dat")
-        if proflie_dl_path.exists():
-            proflie_dl_path.unlink()
+    fake_content = "0.0 0.0\n0.5 0.1\n1.0 0.0"
+    
+    class MockResponse:
+        def __init__(self):
+            self.status_code = 200
+            self.text = fake_content
 
-        # Download them back
-        get_airfoil_file(profile)
+    monkeypatch.setattr("gmshairfoil2d.airfoil_func.requests.get", lambda *args, **kwargs: MockResponse())
 
-        # Test if download is correctly done
-        assert proflie_dl_path.exists()
+    monkeypatch.setattr("gmshairfoil2d.airfoil_func.database_dir", tmp_path)
 
-        with open(proflie_dl_path, "r") as f:
-            profil_dl = f.read()
+    from gmshairfoil2d.airfoil_func import get_airfoil_file
+    
+    profile = "naca0010"
+    expected_path = tmp_path / f"{profile}.dat"
 
-        proflie_test_path = Path(test_data_dir, profile + ".dat")
-        with open(proflie_test_path, "r") as f:
-            profil_test = f.read()
-        
-        # Test if the downloaded profile is the same as the test profile
-        assert profil_test == profil_dl
+    get_airfoil_file(profile)
+
+    assert expected_path.exists()
+    assert expected_path.read_text() == fake_content
 
 
 def test_NACA_4_digit_geom():
