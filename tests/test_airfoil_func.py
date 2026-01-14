@@ -78,23 +78,19 @@ def test_get_airfoil_file():
 
 
 def test_NACA_4_digit_geom():
-    """
-    Test if the NACA0012 profil and NACA4412 profil are correctly generated
-    
-    """
-    
     with open(Path(test_data_dir, "naca0012.txt"), "rb") as f:
         naca0012 = pickle.load(f)
     with open(Path(test_data_dir, "naca4412.txt"), "rb") as f:
         naca4412 = pickle.load(f)
 
+    """
+    Test if the NACA0012 profil and NACA4412 profil are correctly generated
+    """
+
     assert all(
         [a == approx(b, 1e-3) for a, b in zip(naca0012, NACA_4_digit_geom("0012"))]
     )
+
     assert all(
         [a == approx(b, 1e-3) for a, b in zip(naca4412, NACA_4_digit_geom("4412"))]
     )
-
-    # Adjusting long lines to fit within 79 characters
-    [a == approx(b, 1e-3) for a, b in zip(naca0012, NACA_4_digit_geom("0012")[0:79]]
-    [a == approx(b, 1e-3) for a, b in zip(naca4412, NACA_4_digit_geom("4412")[0:79]]
