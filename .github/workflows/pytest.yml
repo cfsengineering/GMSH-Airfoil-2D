@@ -34,10 +34,11 @@ jobs:
       run: pytest -v .
 
     - name: Run gmshairfoil2d
+      shell: bash
       run: |
         mkdir -p database
         cp tests/test_data/e211.dat database/
-        gmshairfoil2d --airfoil e211 --aoa 8 --box 12x4 --format vtk
+        gmshairfoil2d --airfoil e211 --aoa 8 --box 12x4 --format vt
         ls
 
   build-windows:
