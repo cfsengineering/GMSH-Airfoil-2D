@@ -1,5 +1,5 @@
 from pathlib import Path
-import setuptools
+from setuptools import setup, find_packages
 
 NAME = "gmshairfoil2d"
 VERSION = "0.2"
@@ -22,9 +22,9 @@ README = "README.md"
 PACKAGE_DIR = "."
 LICENSE = "Apache License 2.0"
 
-setuptools.setup(
+setup(
     name=NAME,
-    version=VERSION,
+    version="0.2.1",
     author=AUTHOR,
     author_email=EMAIL,
     description=DESCRIPTION,
@@ -32,16 +32,20 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url=URL,
     include_package_data=True,
-    package_dir={"": PACKAGE_DIR},
-    license=LICENSE,
-    packages=[NAME],
+
+    packages=find_packages(), 
     python_requires=REQUIRES_PYTHON,
     entry_points = {
         "console_scripts": ['gmshairfoil2d = gmshairfoil2d.gmshairfoil2d:main']
         },
     keywords=["airfoil", "2D", "mesh", "cfd", "gmsh"],
-    install_requires=REQUIRED,
-    # See: https://pypi.org/classifiers/
+
+    install_requires=[
+        "gmsh>=4.14",
+        "numpy>=1.20.3",
+        "pytest==7.1.3",
+        "requests==2.26.0",
+    ],
     classifiers=[
         "Programming Language :: Python :: 3.11",
         "License :: OSI Approved :: Apache Software License",
