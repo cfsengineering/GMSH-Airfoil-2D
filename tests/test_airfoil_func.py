@@ -12,12 +12,8 @@ LIB_DIR = Path(gmshairfoil2d.__init__.__file__).parents[1]
 database_dir = Path(LIB_DIR, "database")
 test_data_dir = Path(LIB_DIR, "tests", "test_data")
 
-@patch("gmshairfoil2d.airfoil_func.requests.get")
 def test_get_all_available_airfoil_names(monkeypatch):
-    """
-    Test di isolamento: simula la risposta del sito UIUC per verificare 
-    se la logica di estrazione dei nomi funziona.
-    """
+    # 1. Definiamo la risposta finta
     class MockResponse:
         def __init__(self):
             self.status_code = 200
@@ -30,10 +26,16 @@ def test_get_all_available_airfoil_names(monkeypatch):
                 '<a href="coord/e1210.dat">e1210</a>'
                 '</html>'
             )
+
+    # 2. Applichiamo il patch direttamente (senza decoratori @)
+    # Sostituiamo requests.get nel modulo dove viene usato
     monkeypatch.setattr("gmshairfoil2d.airfoil_func.requests.get", lambda *args, **kwargs: MockResponse())
 
+    # 3. Chiamiamo la funzione
+    from gmshairfoil2d.airfoil_func import get_all_available_airfoil_names
     current_airfoil_list = get_all_available_airfoil_names()
 
+    # 4. Asserzioni
     expected_airfoil = ["naca0010", "naca0018", "falcon", "goe510", "e1210"]
     for foil in expected_airfoil:
         assert foil in current_airfoil_list
