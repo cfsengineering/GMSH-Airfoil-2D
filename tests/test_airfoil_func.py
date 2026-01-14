@@ -38,7 +38,7 @@ def test_get_all_available_airfoil_names(monkeypatch):
     for foil in expected_airfoil:
         assert foil in current_airfoil_list
 
-
+@patch("gmshairfoil2d.airfoil_func.requests.get")
 def test_get_all_available_airfoil_names(mock_get):
     """
     Test if at least the database obtained containt some airfoils
