@@ -28,7 +28,6 @@ def test_get_all_available_airfoil_names(monkeypatch):
 
     monkeypatch.setattr("gmshairfoil2d.airfoil_func.requests.get", lambda *args, **kwargs: MockResponse())
 
-    from gmshairfoil2d.airfoil_func import get_all_available_airfoil_names
     current_airfoil_list = get_all_available_airfoil_names()
 
     expected_airfoil = ["naca0010", "naca0018", "falcon", "goe510", "e1210"]
@@ -37,31 +36,26 @@ def test_get_all_available_airfoil_names(monkeypatch):
 
 
 def test_get_airfoil_file(monkeypatch, tmp_path):
-    """
-    Testa il download (simulato) dei profili e verifica che il file 
-    venga salvato correttamente con il contenuto atteso.
-    """
 
-    fake_content = "0.0 0.0\n0.5 0.1\n1.0 0.0"
-    
+    fake_text = "0.0 0.0\n0.5 0.1\n1.0 0.0"
+
     class MockResponse:
         def __init__(self):
             self.status_code = 200
-            self.text = fake_content
+            self.text = fake_text
+            self.content = fake_text.encode('utf-8')
 
     monkeypatch.setattr("gmshairfoil2d.airfoil_func.requests.get", lambda *args, **kwargs: MockResponse())
 
     monkeypatch.setattr("gmshairfoil2d.airfoil_func.database_dir", tmp_path)
 
-    from gmshairfoil2d.airfoil_func import get_airfoil_file
-    
     profile = "naca0010"
     expected_path = tmp_path / f"{profile}.dat"
 
     get_airfoil_file(profile)
 
     assert expected_path.exists()
-    assert expected_path.read_text() == fake_content
+    assert expected_path.read_text() == fake_text
 
 
 def test_NACA_4_digit_geom():
