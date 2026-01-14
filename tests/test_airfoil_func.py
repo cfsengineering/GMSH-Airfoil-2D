@@ -12,7 +12,7 @@ LIB_DIR = Path(gmshairfoil2d.__init__.__file__).parents[1]
 database_dir = Path(LIB_DIR, "database")
 test_data_dir = Path(LIB_DIR, "tests", "test_data")
 
-
+@patch("gmshairfoil2d.airfoil_func.requests.get")
 def test_get_all_available_airfoil_names(monkeypatch):
     """
     Test di isolamento: simula la risposta del sito UIUC per verificare 
@@ -35,19 +35,6 @@ def test_get_all_available_airfoil_names(monkeypatch):
     current_airfoil_list = get_all_available_airfoil_names()
 
     expected_airfoil = ["naca0010", "naca0018", "falcon", "goe510", "e1210"]
-    for foil in expected_airfoil:
-        assert foil in current_airfoil_list
-
-@patch("gmshairfoil2d.airfoil_func.requests.get")
-def test_get_all_available_airfoil_names(mock_get):
-    """
-    Test if at least the database obtained containt some airfoils
-
-    """
-    mock_get.return_value = Mock(status_code=200, content=b"test airfoil data")
-    expected_airfoil = ["naca0010", "naca0018", "falcon", "goe510", "e1210"]
-    current_airfoil_list = get_all_available_airfoil_names()
-
     for foil in expected_airfoil:
         assert foil in current_airfoil_list
 
