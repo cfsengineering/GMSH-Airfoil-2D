@@ -1,5 +1,6 @@
 import pickle
 from pathlib import Path
+from unittest.mock import patch, Mock
 
 import gmshairfoil2d.__init__
 from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_file,
@@ -11,63 +12,66 @@ LIB_DIR = Path(gmshairfoil2d.__init__.__file__).parents[1]
 database_dir = Path(LIB_DIR, "database")
 test_data_dir = Path(LIB_DIR, "tests", "test_data")
 
-def test_get_all_available_airfoil_names():
-    """
-    Test if at least the database obtained containt some airfoils
+def test_get_all_available_airfoil_names(monkeypatch):
+    class MockResponse:
+        def __init__(self):
+            self.status_code = 200
+            self.text = (
+                '<html>'
+                '<a href="coord/naca0010.dat">naca0010</a>'
+                '<a href="coord/naca0018.dat">naca0018</a>'
+                '<a href="coord/falcon.dat">falcon</a>'
+                '<a href="coord/goe510.dat">goe510</a>'
+                '<a href="coord/e1210.dat">e1210</a>'
+                '</html>'
+            )
 
-    """
+    monkeypatch.setattr("gmshairfoil2d.airfoil_func.requests.get", lambda *args, **kwargs: MockResponse())
 
-    expected_airfoil = ["naca0010", "naca0018", "falcon", "goe510", "e1210"]
     current_airfoil_list = get_all_available_airfoil_names()
 
+    expected_airfoil = ["naca0010", "naca0018", "falcon", "goe510", "e1210"]
     for foil in expected_airfoil:
         assert foil in current_airfoil_list
 
 
-def test_get_airfoil_file():
-    """
-    Test if the download of some profiles is possible and if it is, check if
-    they are conform.
-    """
+def test_get_airfoil_file(monkeypatch, tmp_path):
 
-    # Remove airfoil if they exist
-    for profile in ["naca0010", "naca4412"]:
-        
-        proflie_dl_path = Path(database_dir, profile + ".dat")
-        if proflie_dl_path.exists():
-            proflie_dl_path.unlink()
+    fake_text = "0.0 0.0\n0.5 0.1\n1.0 0.0"
 
-        # Download them back
-        get_airfoil_file(profile)
+    class MockResponse:
+        def __init__(self):
+            self.status_code = 200
+            self.text = fake_text
+            self.content = fake_text.encode('utf-8')
 
-        # Test if download is correctly done
-        assert proflie_dl_path.exists()
+    monkeypatch.setattr("gmshairfoil2d.airfoil_func.requests.get", lambda *args, **kwargs: MockResponse())
 
-        with open(proflie_dl_path, "r") as f:
-            profil_dl = f.read()
+    monkeypatch.setattr("gmshairfoil2d.airfoil_func.database_dir", tmp_path)
 
-        proflie_test_path = Path(test_data_dir, profile + ".dat")
-        with open(proflie_test_path, "r") as f:
-            profil_test = f.read()
-        
-        # Test if the downloaded profile is the same as the test profile
-        assert profil_test == profil_dl
+    profile = "naca0010"
+    expected_path = tmp_path / f"{profile}.dat"
+
+    get_airfoil_file(profile)
+
+    assert expected_path.exists()
+    assert expected_path.read_text() == fake_text
 
 
 def test_NACA_4_digit_geom():
-    """
-    Test if the NACA0012 profil and NACA4412 profil are correctly generated
-    
-    """
-    
     with open(Path(test_data_dir, "naca0012.txt"), "rb") as f:
         naca0012 = pickle.load(f)
     with open(Path(test_data_dir, "naca4412.txt"), "rb") as f:
         naca4412 = pickle.load(f)
 
+    """
+    Test if the NACA0012 profil and NACA4412 profil are correctly generated
+    """
+
     assert all(
         [a == approx(b, 1e-3) for a, b in zip(naca0012, NACA_4_digit_geom("0012"))]
     )
+
     assert all(
         [a == approx(b, 1e-3) for a, b in zip(naca4412, NACA_4_digit_geom("4412"))]
     )

@@ -19,11 +19,11 @@ jobs:
     - name: Install missing lib
       run: sudo apt-get update && sudo apt-get install libglu1-mesa
 
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.10.7
-      uses: actions/setup-python@v2
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
       with:
-        python-version: 3.10.7
+        python-version: 3.11
 
     - name: Install gmshairfoil2d with pip
       shell: bash -l {0}
@@ -34,7 +34,10 @@ jobs:
       run: pytest -v .
 
     - name: Run gmshairfoil2d
+      shell: bash
       run: |
+        mkdir -p database
+        cp tests/test_data/e211.dat database/
         gmshairfoil2d --airfoil e211 --aoa 8 --box 12x4 --format vtk
         ls
 
@@ -45,11 +48,11 @@ jobs:
 
     steps:
 
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.10.7
-      uses: actions/setup-python@v2
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
       with:
-        python-version: 3.10.7
+        python-version: 3.11
 
     - name: Install gmshairfoil2d with pip
       shell: bash -l {0}
@@ -60,6 +63,9 @@ jobs:
       run: pytest -v .
 
     - name: Run gmshairfoil2d
+      shell: bash
       run: |
+        mkdir -p database
+        cp tests/test_data/e211.dat database/
         gmshairfoil2d --airfoil e211 --aoa 8 --box 12x4 --format vtk
-        dir
+        ls -la

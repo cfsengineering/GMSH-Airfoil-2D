@@ -9,23 +9,52 @@ on:
 
 jobs:
   deploy:
-
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
+
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.x'
-    - name: Install dependencies
+
+    - name: Install dependencies and show versions
       run: |
         python -m pip install --upgrade pip
-        pip install setuptools wheel twine
-    - name: Build and publish
+        pip install --upgrade setuptools wheel twine
+        python --version
+        pip --version
+        twine --version
+
+    - name: Show presence of local .pypirc (if any)
+      run: |
+        if [ -f ~/.pypirc ]; then
+          echo "Found ~/.pypirc:"
+          sed -n '1,200p' ~/.pypirc
+        else
+          echo "No ~/.pypirc found"
+        fi
+
+    - name: Check secret present (won't print it)
       env:
-        TWINE_USERNAME: ${{ secrets.PYPI_USERS }}
-        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+      run: |
+        if [ -z "${TWINE_PASSWORD}" ]; then
+          echo "ERROR: TWINE_PASSWORD (secret PYPI_TOKEN) is empty"
+          exit 1
+        else
+          echo "Secret PYPI_TOKEN is set"
+        fi
+
+    - name: Build distributions
       run: |
         python setup.py sdist bdist_wheel
-        twine upload dist/*
+        ls -la dist
+
+    - name: Upload to PyPI (verbose)
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
+      run: |
+        # verbose, non-interactive upload; prints more info for debugging
+        twine upload --non-interactive --verbose dist/*

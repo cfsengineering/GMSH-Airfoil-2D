@@ -2,6 +2,7 @@ from pathlib import Path
 
 import numpy as np
 import requests
+import sys
 
 import gmshairfoil2d.__init__
 
@@ -107,8 +108,17 @@ def get_airfoil_file(airfoil_name):
 
     r = requests.get(url)
 
-    if r.status_code != 200:
-        raise Exception(f"Could not get airfoil {airfoil_name}")
+    try:
+        r = requests.get(url, timeout=10) # Aggiungi sempre un timeout
+        if r.status_code != 200:
+             # Invece di raise Exception, print e exit pulito
+             print(f"❌ Error: Could not find airfoil '{airfoil_name}' on UIUC database.")
+             import sys
+             sys.exit(1)
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Network Error: Could not connect to the database. Check your internet.")
+        import sys
+        sys.exit(1)
 
     file_path = Path(database_dir, f"{airfoil_name}.dat")
 
