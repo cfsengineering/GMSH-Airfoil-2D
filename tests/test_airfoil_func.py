@@ -13,19 +13,21 @@ database_dir = Path(LIB_DIR, "database")
 test_data_dir = Path(LIB_DIR, "tests", "test_data")
 
 
-@patch("gmshairfoil2d.airfoil_func.requests.get")
-def test_get_all_available_airfoil_names(mock_get):
-    # simuliamo una pagina HTML con i link che la funzione si aspetta
-    html = (
-        '<html>'
-        '<a href="coord/naca0010.dat">naca0010</a>'
-        '<a href="coord/naca0018.dat">naca0018</a>'
-        '<a href="coord/falcon.dat">falcon</a>'
-        '<a href="coord/goe510.dat">goe510</a>'
-        '<a href="coord/e1210.dat">e1210</a>'
-        '</html>'
-    )
-    mock_get.return_value = Mock(status_code=200, text=html)
+def test_get_all_available_airfoil_names(monkeypatch):
+    class MockResponse:
+        def __init__(self):
+            self.status_code = 200
+            self.text = (
+                '<html>'
+                '<a href="coord/naca0010.dat">naca0010</a>'
+                '<a href="coord/naca0018.dat">naca0018</a>'
+                '<a href="coord/falcon.dat">falcon</a>'
+                '<a href="coord/goe510.dat">goe510</a>'
+                '<a href="coord/e1210.dat">e1210</a>'
+                '</html>'
+            )
+
+    monkeypatch.setattr("gmshairfoil2d.airfoil_func.requests.get", lambda *args, **kwargs: MockResponse())
 
     current_airfoil_list = get_all_available_airfoil_names()
 
