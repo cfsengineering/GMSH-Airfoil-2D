@@ -14,6 +14,10 @@ test_data_dir = Path(LIB_DIR, "tests", "test_data")
 
 
 def test_get_all_available_airfoil_names(monkeypatch):
+    """
+    Test di isolamento: simula la risposta del sito UIUC per verificare 
+    se la logica di estrazione dei nomi funziona.
+    """
     class MockResponse:
         def __init__(self):
             self.status_code = 200
@@ -26,7 +30,6 @@ def test_get_all_available_airfoil_names(monkeypatch):
                 '<a href="coord/e1210.dat">e1210</a>'
                 '</html>'
             )
-
     monkeypatch.setattr("gmshairfoil2d.airfoil_func.requests.get", lambda *args, **kwargs: MockResponse())
 
     current_airfoil_list = get_all_available_airfoil_names()
