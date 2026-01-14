@@ -2,7 +2,7 @@ from pathlib import Path
 from setuptools import setup, find_packages
 
 NAME = "gmshairfoil2d"
-VERSION = "0.2"
+VERSION = "0.2.1"
 AUTHOR = "Giacomo Benedetti"
 EMAIL = "giacomo.benedetti@cfse.ch"
 DESCRIPTION = "Python tool to generate 2D mesh around an airfoil"
@@ -24,7 +24,7 @@ LICENSE = "Apache License 2.0"
 
 setup(
     name=NAME,
-    version="0.2.1",
+    version=VERSION,
     author=AUTHOR,
     author_email=EMAIL,
     description=DESCRIPTION,
