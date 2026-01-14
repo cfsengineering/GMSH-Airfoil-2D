@@ -133,3 +133,9 @@ dmypy.json
 
 #Ignore the database file containing the airfoil profile
 database
+mesh.su2
+*.vtk
+*.msh
+*.vtu
+*.cgns
+*.zip
