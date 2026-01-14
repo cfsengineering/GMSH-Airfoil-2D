@@ -1,5 +1,6 @@
 import pickle
 from pathlib import Path
+from unittest.mock import patch, Mock
 
 import gmshairfoil2d.__init__
 from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_file,
@@ -11,12 +12,34 @@ LIB_DIR = Path(gmshairfoil2d.__init__.__file__).parents[1]
 database_dir = Path(LIB_DIR, "database")
 test_data_dir = Path(LIB_DIR, "tests", "test_data")
 
-def test_get_all_available_airfoil_names():
+
+@patch("gmshairfoil2d.airfoil_func.requests.get")
+def test_get_all_available_airfoil_names(mock_get):
+    # simuliamo una pagina HTML con i link che la funzione si aspetta
+    html = (
+        '<html>'
+        '<a href="coord/naca0010.dat">naca0010</a>'
+        '<a href="coord/naca0018.dat">naca0018</a>'
+        '<a href="coord/falcon.dat">falcon</a>'
+        '<a href="coord/goe510.dat">goe510</a>'
+        '<a href="coord/e1210.dat">e1210</a>'
+        '</html>'
+    )
+    mock_get.return_value = Mock(status_code=200, text=html)
+
+    current_airfoil_list = get_all_available_airfoil_names()
+
+    expected_airfoil = ["naca0010", "naca0018", "falcon", "goe510", "e1210"]
+    for foil in expected_airfoil:
+        assert foil in current_airfoil_list
+
+
+def test_get_all_available_airfoil_names(mock_get):
     """
     Test if at least the database obtained containt some airfoils
 
     """
-
+    mock_get.return_value = Mock(status_code=200, content=b"test airfoil data")
     expected_airfoil = ["naca0010", "naca0018", "falcon", "goe510", "e1210"]
     current_airfoil_list = get_all_available_airfoil_names()
 
@@ -71,3 +94,7 @@ def test_NACA_4_digit_geom():
     assert all(
         [a == approx(b, 1e-3) for a, b in zip(naca4412, NACA_4_digit_geom("4412"))]
     )
+
+    # Adjusting long lines to fit within 79 characters
+    [a == approx(b, 1e-3) for a, b in zip(naca0012, NACA_4_digit_geom("0012")[0:79]]
+    [a == approx(b, 1e-3) for a, b in zip(naca4412, NACA_4_digit_geom("4412")[0:79]]
