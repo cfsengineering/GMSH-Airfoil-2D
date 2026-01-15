@@ -68,6 +68,18 @@ Equivalent command:
 gmshairfoil2d --naca 4220 --airfoil_mesh_size 0.08 --ui --structured --first_layer 0.01 --arg_struc 6x7 --aoa 6
 ```
 
+### Example 6: Custom airfoil from file
+**File:** `example6_custom_airfoil_flap.cfg`
+
+Generates a box mesh around a NLR 7301 custom airfoil profile with a deflected flap at 10 degrees, without boundary layer, with GMSH UI.
+
+Equivalent command:
+```bash
+gmshairfoil2d --airfoil_path tests/test_data/NLR_7301.dat --flap_path tests/test_data/Flap_NLR_7301.dat --deflection 10 --box 4x3 --ui --no_bl
+```
+
+This example demonstrates how to use custom airfoil and flap profiles from external files instead of built-in NACA or database airfoils.
+
 ## Creating Your Own Config
 
 You can create a new config file by copying one of these examples and modifying the parameters:

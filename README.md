@@ -179,3 +179,18 @@ gmshairfoil2d --config example/example5_naca4220_structured.cfg
 ```
 
 ![GMSH result with 2D structured mesh](images/example_structured_naca4220.png)
+### Example 6: Custom airfoil from file
+
+To create a mesh around a custom airfoil profile with a deflected flap:
+
+```bash
+gmshairfoil2d --airfoil_path tests/test_data/NLR_7301.dat --flap_path tests/test_data/Flap_NLR_7301.dat --deflection 10 --box 4x3 --ui --no_bl
+```
+
+Or using config file:
+
+```bash
+gmshairfoil2d --config example/example6_custom_airfoil_flap.cfg
+```
+
+This example shows how to load custom airfoil and flap profiles from external .dat files and generate a mesh with flap deflection, useful for using proprietary or custom-designed airfoil geometries.
