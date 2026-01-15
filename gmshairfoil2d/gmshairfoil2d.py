@@ -239,6 +239,15 @@ def main():
     cloud_points = None
     airfoil_name = None
 
+    # Check that only one airfoil source is specified
+    airfoil_sources = [args.naca, args.airfoil, args.airfoil_path]
+    specified_sources = [s for s in airfoil_sources if s is not None]
+    
+    if len(specified_sources) > 1:
+        print("\nError: Only one airfoil source can be specified at a time!")
+        print("Choose one of: --naca, --airfoil, or --airfoil_path\n")
+        sys.exit(1)
+
     if args.naca:
         airfoil_name = args.naca
         cloud_points = NACA_4_digit_geom(airfoil_name)
@@ -257,7 +266,7 @@ def main():
 
     if cloud_points is None:
         print("\nNo airfoil profile specified, exiting")
-        print("You must use --naca --airfoil or --airfoil_path\n")
+        print("You must use --naca, --airfoil, or --airfoil_path\n")
         parser.print_help()
         sys.exit()
 
