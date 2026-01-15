@@ -7,14 +7,51 @@ Supports reading and writing simple key=value configuration files.
 Empty values are skipped.
 """
 
-import os
 from pathlib import Path
 
 
-def read_config(config_path):
+def _convert_value(value, key, string_params):
+    """Convert string value to appropriate type.
+    
+    Parameters
+    ----------
+    value : str
+        String value to convert
+    key : str
+        Configuration key name
+    string_params : set
+        Set of keys that should remain as strings
+    
+    Returns
+    -------
+    str, int, float, bool, or None
+        Converted value
     """
-    Read configuration from a simple config file (key=value format).
-    Empty values are skipped.
+    if key in string_params:
+        return value
+    
+    value_lower = value.lower()
+    if value_lower == 'true':
+        return True
+    elif value_lower == 'false':
+        return False
+    elif value_lower == 'none':
+        return None
+    
+    # Try to convert to numeric
+    try:
+        if '.' in value or 'e' in value_lower:
+            return float(value)
+        return int(value)
+    except ValueError:
+        return value
+
+
+def read_config(config_path):
+    """Read configuration from a simple config file (key=value format).
+    
+    Empty values are skipped. Values are automatically converted to appropriate types
+    (int, float, bool) unless the key is in the string_params set.
     
     Parameters
     ----------
@@ -30,6 +67,8 @@ def read_config(config_path):
     ------
     FileNotFoundError
         If the configuration file doesn't exist
+    Exception
+        If there's an error parsing the configuration file
     """
     config_path = Path(config_path)
     
@@ -61,31 +100,15 @@ def read_config(config_path):
                 if not value:
                     continue
                 
-                # Convert string values to appropriate types
-                if key in string_params:
-                    # Keep these as strings
-                    config[key] = value
-                elif value.lower() == 'true':
-                    config[key] = True
-                elif value.lower() == 'false':
-                    config[key] = False
-                elif value.lower() == 'none':
-                    config[key] = None
-                else:
-                    # Try to convert to float/int
-                    try:
-                        if '.' in value or 'e' in value.lower():
-                            config[key] = float(value)
-                        else:
-                            config[key] = int(value)
-                    except ValueError:
-                        # Keep as string
-                        config[key] = value
+                # Convert value to appropriate type
+                config[key] = _convert_value(value, key, string_params)
         
         return config
     
+    except FileNotFoundError:
+        raise
     except Exception as e:
-        raise Exception(f"Error parsing configuration file: {e}")
+        raise Exception(f"Error parsing configuration file: {e}") from e
 
 
 def write_config(config_dict, output_path):
@@ -113,9 +136,10 @@ def write_config(config_dict, output_path):
 
 
 def merge_config_with_args(config_dict, args):
-    """
-    Merge configuration file parameters with command-line arguments.
-    Command-line arguments take precedence over config file values.
+    """Merge configuration file parameters with command-line arguments.
+    
+    Command-line arguments take precedence over config file values. Only applies
+    config values when the command-line value is None or False (default).
     
     Parameters
     ----------
@@ -129,21 +153,14 @@ def merge_config_with_args(config_dict, args):
     argparse.Namespace
         Merged arguments with config values applied
     """
-    # Convert args to dict
-    args_dict = vars(args).copy()
+    args_dict = vars(args)
     
     # For each key in config, update args only if not explicitly set on command line
     for key, value in config_dict.items():
-        # Skip if the argument was explicitly provided on command line
-        # We determine this by checking if it differs from the default
         if key in args_dict:
-            # Only override with config value if current value is default/None
+            # Only override with config value if current value is default/None/False
             if args_dict[key] is None or args_dict[key] is False:
-                args_dict[key] = value
-    
-    # Convert back to Namespace
-    for key, value in args_dict.items():
-        setattr(args, key, value)
+                setattr(args, key, value)
     
     return args
 

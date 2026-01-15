@@ -5,8 +5,6 @@ import argparse
 import math
 import sys
 from pathlib import Path
-import numpy as np
-import os
 
 import gmsh
 from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_points,
@@ -14,6 +12,33 @@ from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_points,
 from gmshairfoil2d.geometry_def import (AirfoilSpline, Circle, PlaneSurface,
                                         Rectangle, outofbounds, CType)
 from gmshairfoil2d.config_handler import read_config, merge_config_with_args, create_example_config
+
+
+def _calculate_spline_length(spline):
+    """Calculate the length of a spline based on its points.
+    
+    Parameters
+    ----------
+    spline : object
+        Spline object with point_list attribute
+    
+    Returns
+    -------
+    float
+        Total length of the spline
+    """
+    if not hasattr(spline, 'point_list') or not spline or not spline.point_list:
+        return 0
+    
+    points = spline.point_list
+    if len(points) < 2:
+        return 0
+    
+    return sum(
+        math.sqrt((points[i].x - points[i+1].x)**2 + 
+                 (points[i].y - points[i+1].y)**2)
+        for i in range(len(points) - 1)
+    )
 
 
 def apply_transfinite_to_surfaces(airfoil_obj, airfoil_mesh_size, name=""):
@@ -34,40 +59,10 @@ def apply_transfinite_to_surfaces(airfoil_obj, airfoil_mesh_size, name=""):
     name : str, optional
         Name of the object (for logging purposes)
     """
-    # Calculate the actual length of each spline
-    l_front = 0
-    l_upper = 0
-    l_lower = 0
-    
-    # Calculate front spline length
-    if hasattr(airfoil_obj, 'front_spline') and airfoil_obj.front_spline:
-        front_points = airfoil_obj.front_spline.point_list
-        if front_points and len(front_points) > 1:
-            l_front = sum(
-                math.sqrt((front_points[i].x - front_points[i+1].x)**2 + 
-                         (front_points[i].y - front_points[i+1].y)**2)
-                for i in range(len(front_points)-1)
-            )
-    
-    # Calculate upper spline length
-    if hasattr(airfoil_obj, 'upper_spline') and airfoil_obj.upper_spline:
-        upper_points = airfoil_obj.upper_spline.point_list
-        if upper_points and len(upper_points) > 1:
-            l_upper = sum(
-                math.sqrt((upper_points[i].x - upper_points[i+1].x)**2 + 
-                         (upper_points[i].y - upper_points[i+1].y)**2)
-                for i in range(len(upper_points)-1)
-            )
-    
-    # Calculate lower spline length
-    if hasattr(airfoil_obj, 'lower_spline') and airfoil_obj.lower_spline:
-        lower_points = airfoil_obj.lower_spline.point_list
-        if lower_points and len(lower_points) > 1:
-            l_lower = sum(
-                math.sqrt((lower_points[i].x - lower_points[i+1].x)**2 + 
-                         (lower_points[i].y - lower_points[i+1].y)**2)
-                for i in range(len(lower_points)-1)
-            )
+    # Calculate the length of each spline
+    l_front = _calculate_spline_length(airfoil_obj.front_spline) if hasattr(airfoil_obj, 'front_spline') else 0
+    l_upper = _calculate_spline_length(airfoil_obj.upper_spline) if hasattr(airfoil_obj, 'upper_spline') else 0
+    l_lower = _calculate_spline_length(airfoil_obj.lower_spline) if hasattr(airfoil_obj, 'lower_spline') else 0
     
     # Calculate total perimeter
     total_length = l_front + l_upper + l_lower

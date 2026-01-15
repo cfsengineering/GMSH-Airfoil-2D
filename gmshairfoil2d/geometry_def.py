@@ -1,152 +1,118 @@
 """
-This script contain the definition of geometrical objects needed to build the geometry.
+This module contains the definition of geometrical objects needed to build the geometry.
 """
 
-from operator import attrgetter
-import gmsh
-import numpy as np
 import math
 import sys
+from operator import attrgetter
+
+import gmsh
+import numpy as np
 
 
 class Point:
-    """
-    A class to represent the point geometrical object of gmsh
-
-    ...
+    """A class to represent a point geometrical object in gmsh.
 
     Attributes
     ----------
     x : float
-        position in x
+        Position in x
     y : float
-        position in y
+        Position in y
     z : float
-        position in z
+        Position in z
     mesh_size : float
-        If mesh_size is > 0, add a meshing constraint
-            at that point
+        Meshing constraint size at this point (if > 0)
     """
 
     def __init__(self, x, y, z, mesh_size):
-
         self.x = x
         self.y = y
         self.z = z
         self.mesh_size = mesh_size
         self.dim = 0
-
         # create the gmsh object and store the tag of the geometric object
-        self.tag = gmsh.model.geo.addPoint(
-            self.x, self.y, self.z, self.mesh_size)
+        self.tag = gmsh.model.geo.addPoint(self.x, self.y, self.z, self.mesh_size)
 
     def rotation(self, angle, origin, axis):
-        """
-        Method to rotate the object Point
-        ...
+        """Rotate the point around an axis.
+        
         Parameters
         ----------
         angle : float
-            angle of rotation in rad
+            Angle of rotation in radians
         origin : tuple
-            tuple of point (x,y,z) which is the origin of the rotation
+            Tuple of (x, y, z) defining the rotation origin
         axis : tuple
-            tuple of point (x,y,z) which represent the axis of rotation
+            Tuple of (x, y, z) defining the rotation axis
         """
-        gmsh.model.geo.rotate(
-            [(self.dim, self.tag)],
-            *origin,
-            *axis,
-            angle,
-        )
+        gmsh.model.geo.rotate([(self.dim, self.tag)], *origin, *axis, angle)
 
     def translation(self, vector):
-        """
-        Method to translate the object Point
-
-        ...
-
+        """Translate the point.
+        
         Parameters
         ----------
-        direction : tuple
-            tuple of point (x,y,z) which represent the direction of the translation
+        vector : tuple
+            Tuple of (x, y, z) defining the translation vector
         """
         gmsh.model.geo.translate([(self.dim, self.tag)], *vector)
 
 
 class Line:
-    """
-    A class to represent the Line geometrical object of gmsh
-
-    ...
+    """A class to represent a line geometrical object in gmsh.
 
     Attributes
     ----------
     start_point : Point
-        first point of the line
+        First point of the line
     end_point : Point
-        second point of the line
+        Second point of the line
     """
 
     def __init__(self, start_point, end_point):
         self.start_point = start_point
         self.end_point = end_point
-
         self.dim = 1
-
         # create the gmsh object and store the tag of the geometric object
-        self.tag = gmsh.model.geo.addLine(
-            self.start_point.tag, self.end_point.tag)
+        self.tag = gmsh.model.geo.addLine(self.start_point.tag, self.end_point.tag)
 
     def rotation(self, angle, origin, axis):
-        """
-        Method to rotate the object Line
-        ...
-
+        """Rotate the line around an axis.
+        
         Parameters
         ----------
         angle : float
-            angle of rotation in rad
+            Angle of rotation in radians
         origin : tuple
-            tuple of point (x,y,z) which is the origin of the rotation
+            Tuple of (x, y, z) defining the rotation origin
         axis : tuple
-            tuple of point (x,y,z) which represent the axis of rotation
+            Tuple of (x, y, z) defining the rotation axis
         """
-        gmsh.model.geo.rotate(
-            [(self.dim, self.tag)],
-            *origin,
-            *axis,
-            angle,
-        )
+        gmsh.model.geo.rotate([(self.dim, self.tag)], *origin, *axis, angle)
 
     def translation(self, vector):
-        """
-        Method to translate the object Line
-        ...
-
+        """Translate the line.
+        
         Parameters
         ----------
-        direction : tuple
-            tuple of point (x,y,z) which represent the direction of the translation
+        vector : tuple
+            Tuple of (x, y, z) defining the translation vector
         """
         gmsh.model.geo.translate([(self.dim, self.tag)], *vector)
 
 
 class Spline:
-    """
-    A class to represent the Spine geometrical object of gmsh
-
-    ...
+    """A class to represent a Spline geometrical object in gmsh.
 
     Attributes
     ----------
-    points_list : list(Point)
-        list of Point object forming the Spline
+    point_list : list of Point
+        List of Point objects forming the Spline
     """
 
     def __init__(self, point_list):
         self.point_list = point_list
-
         # generate the Lines tag list to follow
         self.tag_list = [point.tag for point in self.point_list]
         self.dim = 1
@@ -154,48 +120,36 @@ class Spline:
         self.tag = gmsh.model.geo.addSpline(self.tag_list)
 
     def rotation(self, angle, origin, axis):
-        """
-        Method to rotate the object Spline
-
-        Rotate the spline itself (curve, startpoint, endpoint), then rotate the intermediate points
-        ...
-
+        """Rotate the spline around an axis.
+        
+        Rotates the spline curve and all intermediate points.
+        
         Parameters
         ----------
         angle : float
-            angle of rotation in rad
+            Angle of rotation in radians
         origin : tuple
-            tuple of point (x,y,z) which is the origin of the rotation
+            Tuple of (x, y, z) defining the rotation origin
         axis : tuple
-            tuple of point (x,y,z) which represent the axis of rotation
+            Tuple of (x, y, z) defining the rotation axis
         """
-        gmsh.model.geo.rotate(
-            [(self.dim, self.tag)],
-            *origin,
-            *axis,
-            angle,
-        )
-
-        [
+        gmsh.model.geo.rotate([(self.dim, self.tag)], *origin, *axis, angle)
+        for interm_point in self.point_list[1:-1]:
             interm_point.rotation(angle, origin, axis)
-            for interm_point in self.point_list[1:-1]
-        ]
 
     def translation(self, vector):
-        """
-        Method to translate the object Line
-
-        Translate the spline itself (curve, startpoint,endpoint), then translate the indermediate points
-        ...
-
+        """Translate the spline.
+        
+        Translates the spline curve and all intermediate points.
+        
         Parameters
         ----------
-        direction : tuple
-            tuple of point (x,y,z) which represent the direction of the translation
+        vector : tuple
+            Tuple of (x, y, z) defining the translation vector
         """
         gmsh.model.geo.translate([(self.dim, self.tag)], *vector)
-        [interm_point.translation(vector)
-         for interm_point in self.point_list[1:-1]]
+        for interm_point in self.point_list[1:-1]:
+            interm_point.translation(vector)
 
 
 class CurveLoop:
