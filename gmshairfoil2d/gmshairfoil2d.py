@@ -85,6 +85,13 @@ def main():
         default=10,
         help="Create a circular farfield mesh of given radius [m] (default 10m)",
     )
+
+    parser.add_argument(
+        "--farfield_ctype",
+        action="store_true",
+        help="Generate a structured circular farfield (CType) for hybrid meshes",
+    )
+
     parser.add_argument(
         "--box",
         type=str,
@@ -92,13 +99,14 @@ def main():
         nargs="?",
         help="Create a box mesh of dimensions [length]x[height] [m]",
     )
+
     parser.add_argument(
         "--airfoil_mesh_size",
         type=float,
         metavar="SIZE",
         nargs="?",
         default=0.01,
-        help="Mesh size of the airfoil contour [m]  (default 0.01m) (for normal, bl and structural)",
+        help="Mesh size of the airfoil contour [m]  (default 0.01m) (for normal, bl and structured)",
     )
 
     parser.add_argument(
@@ -122,7 +130,7 @@ def main():
         metavar="HEIGHT",
         nargs="?",
         default=3e-5,
-        help="Height of the first layer [m] (default 3e-5m) (for bl and structural)",
+        help="Height of the first layer [m] (default 3e-5m) (for bl and structured)",
     )
 
     parser.add_argument(
@@ -131,7 +139,7 @@ def main():
         metavar="RATIO",
         nargs="?",
         default=1.2,
-        help="Growth ratio of layers (default 1.2) (for bl and structural)",
+        help="Growth ratio of layers (default 1.2) (for bl and structured)",
     )
 
     parser.add_argument(
@@ -152,16 +160,16 @@ def main():
     )
 
     parser.add_argument(
-        "--structural",
+        "--structured",
         action="store_true",
-        help="Generate a structural mesh",
+        help="Generate a structured mesh",
     )
     parser.add_argument(
         "--arg_struc",
         type=str,
         metavar="[LxL]",
         default="10x10",
-        help="Parameters for the structural mesh [wake length (axis x)]x[total height (axis y)] [m] (default 10x10)",
+        help="Parameters for the structured mesh [wake length (axis x)]x[total height (axis y)] [m] (default 10x10)",
     )
 
     parser.add_argument(
@@ -245,8 +253,8 @@ def main():
             flap.rotation(-args.deflection * (math.pi / 180), (flap.le.x, flap.le.y, 0), (0, 0, 1))
         gmsh.model.geo.synchronize()
 
-    # If structural, all is done in CType
-    if args.structural:
+    # If structured, all is done in CType
+    if args.structured:
         dx_wake, dy = [float(value)for value in args.arg_struc.split("x")]
         mesh = CType(airfoil, dx_wake, dy,
                      args.airfoil_mesh_size, args.first_layer, args.ratio, aoa)
@@ -271,7 +279,13 @@ def main():
         outofbounds(airfoil, args.box, args.farfield, d[-1])
 
         # External domain
-        if args.box:
+        if args.farfield_ctype:
+            # Use C-type farfield (unstructured) for hybrid meshes
+            ext_domain = CType(
+                airfoil, args.farfield, args.farfield, args.ext_mesh_size,
+                structured=args.structured
+            )
+        elif args.box:
             length, width = [float(value) for value in args.box.split("x")]
             ext_domain = Rectangle(0.5, 0, 0, length, width,
                                    mesh_size=args.ext_mesh_size)
@@ -333,7 +347,8 @@ def main():
     # Choose the parameters of the mesh : we want the mesh size according to the points and not curvature (doesn't work with farfield)
     gmsh.option.setNumber("Mesh.MeshSizeFromPoints", 1)
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
-    if not args.structural and not args.no_bl:
+
+    if not args.structured and not args.no_bl:
         # Add transfinite line on the front to get more point in the middle (where the curvature of the le makes it usually more spaced)
         x, y, v, w = airfoil.points[k1].x, airfoil.points[k2].y, airfoil.points[k1].x, airfoil.points[k2].y
         c1, c2 = airfoil.le.x, airfoil.le.y

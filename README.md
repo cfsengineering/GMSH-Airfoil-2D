@@ -40,16 +40,16 @@ optional arguments:
   --box [LENGTHxWIDTH]        Create a box mesh of dimensions [length]x[height] [m]
   --airfoil_mesh_size [SIZE]  Mesh size of the airfoil contour [m] (default 0.01m)
   --ext_mesh_size [SIZE]      Mesh size of the external domain [m] (default 0.2m) (for normal, bl
-                              and structural)
+                              and structured)
   --no_bl                     Do the unstructured meshing (with triangles), without a boundary
                               layer
-  --first_layer [HEIGHT]      Height of the first layer [m] (default 3e-5m) (for bl and structural)
-  --ratio [RATIO]             Growth ratio of layers (default 1.2) (for bl and structural)
+  --first_layer [HEIGHT]      Height of the first layer [m] (default 3e-5m) (for bl and structured)
+  --ratio [RATIO]             Growth ratio of layers (default 1.2) (for bl and structured)
   --nb_layers [INT]           Total number of layers in the boundary layer (default 35)
   --format [FORMAT]           Format of the mesh file, e.g: msh, vtk, wrl, stl, mesh, cgns, su2,
                               dat (default su2)
-  --structural                Generate a structural mesh
-  --arg_struc [LxLxL]         Parameters for the structural mesh [leading (axis x)]x[wake (axis
+  --structured                Generate a structured mesh
+  --arg_struc [LxLxL]         Parameters for the structured mesh [leading (axis x)]x[wake (axis
                               x)]x[total height (axis y)] [m] (default 1x10x10)
   --output [PATH]             Output path for the mesh file (default : current dir)
   --ui                        Open GMSH user interface to see the mesh
@@ -99,10 +99,10 @@ gmshairfoil2d --airfoil ch10sm --ui --box 2x1.4
 ![GMSH result with 2D mesh with boundary layer, rectangular box](images/example_ch10sm_bl.png)
 
 
-To create a structural mesh around a Naca 4220 airfoil (the 4 digits code is obviously "4220"), with first layer height of 0.01, mesh_size of 0.08 wake length of 6, height of 7, and angle of attack of 6 degrees :
+To create a structured mesh around a Naca 4220 airfoil (the 4 digits code is obviously "4220"), with first layer height of 0.01, mesh_size of 0.08 wake length of 6, height of 7, and angle of attack of 6 degrees :
 
 ```bash
- gmshairfoil2d --naca 4220 --airfoil_mesh_size 0.08 --ui --structural --first_layer 0.01 --arg_struc 6x7 --aoa 6
+ gmshairfoil2d --naca 4220 --airfoil_mesh_size 0.08 --ui --structured --first_layer 0.01 --arg_struc 6x7 --aoa 6
 ```
 
-![GMSH result with 2D structural mesh](images/example_structural_naca4220.png)
+![GMSH result with 2D structured mesh](images/example_structured_naca4220.png)
