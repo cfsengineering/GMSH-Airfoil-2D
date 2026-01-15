@@ -4,7 +4,7 @@ from unittest.mock import patch, Mock
 
 import gmshairfoil2d.__init__
 from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_file,
-                                        get_all_available_airfoil_names)
+                                        get_all_available_airfoil_names, read_airfoil_from_file)
 from pytest import approx
 
 LIB_DIR = Path(gmshairfoil2d.__init__.__file__).parents[1]
@@ -75,3 +75,54 @@ def test_NACA_4_digit_geom():
     assert all(
         [a == approx(b, 1e-3) for a, b in zip(naca4412, NACA_4_digit_geom("4412"))]
     )
+
+def test_read_airfoil_from_file(tmp_path):
+    """
+    Test reading airfoil coordinates from a .dat file
+    """
+    # Create a simple test airfoil file
+    airfoil_content = """NACA 0012 Test Airfoil
+                      100 100
+                      1.000000 0.000000
+                      0.975000 0.003000
+                      0.900000 0.008000
+                      0.500000 0.012000
+                      0.100000 0.008000
+                      0.025000 0.003000
+                      0.000000 0.000000
+                      0.025000 -0.003000
+                      0.100000 -0.008000
+                      0.500000 -0.012000
+                      0.900000 -0.008000
+                      0.975000 -0.003000
+                      """
+    
+    test_file = tmp_path / "test_airfoil.dat"
+    test_file.write_text(airfoil_content)
+    
+    # Read the airfoil
+    points = read_airfoil_from_file(str(test_file))
+    
+    # Check that points were read
+    assert len(points) > 0
+    
+    # Check that points are tuples with 3 coordinates (x, y, 0)
+    for point in points:
+        assert len(point) == 3
+        assert point[2] == 0  # z coordinate should be 0
+    
+    # Check that we have some leading edge points (x near 0)
+    x_coords = [p[0] for p in points]
+    assert any(x < 0.05 for x in x_coords)
+    
+    # Check that we have trailing edge points (x near 1)
+    assert any(x > 0.95 for x in x_coords)
+
+
+def test_read_airfoil_from_file_not_found():
+    """
+    Test that FileNotFoundError is raised for non-existent files
+    """
+    import pytest
+    with pytest.raises(FileNotFoundError):
+        read_airfoil_from_file("/non/existent/path/airfoil.dat")

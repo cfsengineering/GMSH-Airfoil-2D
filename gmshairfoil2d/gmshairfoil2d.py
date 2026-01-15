@@ -13,6 +13,7 @@ from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_points,
                                         get_all_available_airfoil_names, read_airfoil_from_file)
 from gmshairfoil2d.geometry_def import (AirfoilSpline, Circle, PlaneSurface,
                                         Rectangle, outofbounds, CType)
+from gmshairfoil2d.config_handler import read_config, merge_config_with_args, create_example_config
 
 
 def main():
@@ -23,6 +24,26 @@ def main():
         formatter_class=lambda prog: argparse.HelpFormatter(
             prog, max_help_position=80, width=99
         ),
+    )
+
+    parser.add_argument(
+        "--config",
+        type=str,
+        metavar="PATH",
+        help="Path to YAML configuration file",
+    )
+
+    parser.add_argument(
+        "--save_config",
+        type=str,
+        metavar="PATH",
+        help="Save configuration to a YAML file",
+    )
+
+    parser.add_argument(
+        "--example_config",
+        action="store_true",
+        help="Create an example configuration file (config_example.yaml)",
     )
 
     parser.add_argument(
@@ -187,6 +208,24 @@ def main():
         help="Open GMSH user interface to see the mesh",
     )
     args = parser.parse_args()
+
+    # Handle configuration file operations
+    if args.example_config:
+        create_example_config()
+        sys.exit()
+
+    # Load configuration from file if provided
+    if args.config:
+        try:
+            config_dict = read_config(args.config)
+            args = merge_config_with_args(config_dict, args)
+            print(f"Configuration loaded from: {args.config}")
+        except FileNotFoundError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        except Exception as e:
+            print(f"Error reading configuration: {e}", file=sys.stderr)
+            sys.exit(1)
 
     if len(sys.argv) == 1:
         parser.print_help()
@@ -384,6 +423,14 @@ def main():
     gmsh.write(str(mesh_path))
     gmsh.finalize()
 
+    # Save configuration if requested
+    if args.save_config:
+        # Remove None values and internal arguments from the config dict
+        config_dict = {k: v for k, v in vars(args).items() 
+                      if v is not None and v is not False 
+                      and k not in ['config', 'save_config', 'example_config', 'list']}
+        from gmshairfoil2d.config_handler import write_config
+        write_config(config_dict, args.save_config)
 
 if __name__ == "__main__":
     main()
