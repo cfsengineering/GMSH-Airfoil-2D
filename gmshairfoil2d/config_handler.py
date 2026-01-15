@@ -168,6 +168,7 @@ def create_example_config(output_path="config_example.cfg"):
         "farfield_ctype": None,
         "box": None,
         "airfoil_mesh_size": "0.01",
+        "flap_mesh_size": None,
         "ext_mesh_size": "0.2",
         "no_bl": "False",
         "first_layer": "3e-05",

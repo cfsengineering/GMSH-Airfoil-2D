@@ -16,59 +16,100 @@ from gmshairfoil2d.geometry_def import (AirfoilSpline, Circle, PlaneSurface,
 from gmshairfoil2d.config_handler import read_config, merge_config_with_args, create_example_config
 
 
-def apply_transfinite_to_front(airfoil_obj, airfoil_mesh_size, name=""):
+def apply_transfinite_to_surfaces(airfoil_obj, airfoil_mesh_size, name=""):
     """
-    Apply transfinite meshing to the front spline of an airfoil or flap object.
-    This ensures better point distribution along the leading edge region with
-    a Bump distribution (more points in the middle where curvature is higher).
+    Apply transfinite meshing to all three splines (upper, lower, and front) of an 
+    airfoil or flap object for smooth cell transitions based on edge lengths.
+    
+    The key is to distribute nodes proportionally to each edge's length:
+    - longer edges get more points
+    - all edges get consistent cell sizing at junctions
     
     Parameters
     ----------
     airfoil_obj : AirfoilSpline
-        The airfoil or flap object containing the front_spline
+        The airfoil or flap object containing front_spline, upper_spline, lower_spline
     airfoil_mesh_size : float
-        The target mesh size to compute the number of points
+        The target mesh size to maintain consistent cell dimensions
     name : str, optional
         Name of the object (for logging purposes)
-        
-    Returns
-    -------
-    None
-        Modifies the gmsh model in place
     """
-    # Extract the indices for the front spline region
-    # Find the leading edge location
-    k1_point = airfoil_obj.points[0]
-    k2_point = airfoil_obj.points[0]
+    # Calculate the actual length of each spline
+    l_front = 0
+    l_upper = 0
+    l_lower = 0
     
-    # Find indices that bound the front spline
-    for i, p in enumerate(airfoil_obj.points):
-        # Use proximity to find front spline boundaries
-        dist_to_le = math.sqrt((p.x - airfoil_obj.le.x)**2 + (p.y - airfoil_obj.le.y)**2)
-        if dist_to_le < 0.1:  # Within 10% chord of LE
-            if p.y > airfoil_obj.le.y:
-                k1_point = p
-            elif p.y < airfoil_obj.le.y:
-                k2_point = p
+    # Calculate front spline length
+    if hasattr(airfoil_obj, 'front_spline') and airfoil_obj.front_spline:
+        front_points = airfoil_obj.front_spline.point_list
+        if front_points and len(front_points) > 1:
+            l_front = sum(
+                math.sqrt((front_points[i].x - front_points[i+1].x)**2 + 
+                         (front_points[i].y - front_points[i+1].y)**2)
+                for i in range(len(front_points)-1)
+            )
     
-    # Get the actual coordinates for length calculation
-    c1, c2 = airfoil_obj.le.x, airfoil_obj.le.y
-    x, y = k1_point.x, k1_point.y
-    v, w = k2_point.x, k2_point.y
+    # Calculate upper spline length
+    if hasattr(airfoil_obj, 'upper_spline') and airfoil_obj.upper_spline:
+        upper_points = airfoil_obj.upper_spline.point_list
+        if upper_points and len(upper_points) > 1:
+            l_upper = sum(
+                math.sqrt((upper_points[i].x - upper_points[i+1].x)**2 + 
+                         (upper_points[i].y - upper_points[i+1].y)**2)
+                for i in range(len(upper_points)-1)
+            )
     
-    # Approximate length of the front spline curve
-    l = (math.sqrt((x-c1)*(x-c1)+(y-c2)*(y-c2)) +
-         math.sqrt((v-c1)*(v-c1)+(w-c2)*(w-c2)))
+    # Calculate lower spline length
+    if hasattr(airfoil_obj, 'lower_spline') and airfoil_obj.lower_spline:
+        lower_points = airfoil_obj.lower_spline.point_list
+        if lower_points and len(lower_points) > 1:
+            l_lower = sum(
+                math.sqrt((lower_points[i].x - lower_points[i+1].x)**2 + 
+                         (lower_points[i].y - lower_points[i+1].y)**2)
+                for i in range(len(lower_points)-1)
+            )
     
-    # Compute number of points: need more points as they'll be closer on the front
-    nb_points = int(3.5*l/airfoil_mesh_size)
+    # Calculate total perimeter
+    total_length = l_front + l_upper + l_lower
     
-    # Apply transfinite curve with Bump distribution (higher density in middle)
-    gmsh.model.mesh.setTransfiniteCurve(
-        airfoil_obj.front_spline.tag, nb_points, "Bump", 10)
+    if total_length == 0:
+        print(f"Warning: {name} has zero total length, skipping transfinite meshing")
+        return
+    
+    # Distribute points proportionally to edge lengths
+    # Target cell size should be approximately airfoil_mesh_size on all edges
+    total_points = max(20, int(total_length / airfoil_mesh_size))
+    
+    # Distribute points based on proportion of each edge length
+    # Front gets a multiplier for higher density at leading edge (Bump effect)
+    front_multiplier = 2  # 100% extra density for front region
+    weighted_length = l_front * front_multiplier + l_upper + l_lower
+    
+    nb_points_front = max(15, int((l_front * front_multiplier / weighted_length) * total_points))
+    nb_points_upper = max(15, int((l_upper / weighted_length) * total_points))
+    nb_points_lower = max(15, int((l_lower / weighted_length) * total_points))
+    
+    # Apply transfinite curves
+    if hasattr(airfoil_obj, 'front_spline') and airfoil_obj.front_spline:
+        gmsh.model.mesh.setTransfiniteCurve(
+            airfoil_obj.front_spline.tag, nb_points_front, "Bump", 10)
+    
+    if hasattr(airfoil_obj, 'upper_spline') and airfoil_obj.upper_spline:
+        gmsh.model.mesh.setTransfiniteCurve(airfoil_obj.upper_spline.tag, nb_points_upper)
+    
+    if hasattr(airfoil_obj, 'lower_spline') and airfoil_obj.lower_spline:
+        gmsh.model.mesh.setTransfiniteCurve(airfoil_obj.lower_spline.tag, nb_points_lower)
     
     if name:
-        print(f"Applied transfinite meshing to {name} front spline: {nb_points} points")
+        # Calculate actual cell sizes for info
+        front_cell_size = l_front / (nb_points_front - 1) if nb_points_front > 1 else 0
+        upper_cell_size = l_upper / (nb_points_upper - 1) if nb_points_upper > 1 else 0
+        lower_cell_size = l_lower / (nb_points_lower - 1) if nb_points_lower > 1 else 0
+        
+        print(f"Applied transfinite meshing to {name}:")
+        print(f"  - Front spline: {nb_points_front:3d} points, length={l_front:.4f}, cell size≈{front_cell_size:.6f}")
+        print(f"  - Upper spline: {nb_points_upper:3d} points, length={l_upper:.4f}, cell size≈{upper_cell_size:.6f}")
+        print(f"  - Lower spline: {nb_points_lower:3d} points, length={l_lower:.4f}, cell size≈{lower_cell_size:.6f}")
 
 
 def main():
@@ -183,6 +224,15 @@ def main():
         nargs="?",
         default=0.01,
         help="Mesh size of the airfoil contour [m]  (default 0.01m) (for normal, bl and structured)",
+    )
+
+    parser.add_argument(
+        "--flap_mesh_size",
+        type=float,
+        metavar="SIZE",
+        nargs="?",
+        default=None,
+        help="Mesh size of the flap contour [m] (if not provided, defaults to 85%% of airfoil_mesh_size)",
     )
 
     parser.add_argument(
@@ -349,8 +399,10 @@ def main():
     gmsh.model.geo.synchronize()
 
     if args.flap_path:
+        # Use flap_mesh_size if provided, otherwise use 85% of airfoil_mesh_size
+        flap_mesh_size = args.flap_mesh_size if args.flap_mesh_size else args.airfoil_mesh_size * 0.85
         flap = AirfoilSpline(
-            flap_points, args.airfoil_mesh_size, name="flap", is_flap=True)
+            flap_points, flap_mesh_size, name="flap", is_flap=True)
         flap.rotation(aoa, (0.5, 0, 0), (0, 0, 1))
         if args.deflection:
             flap.rotation(-args.deflection * (math.pi / 180), (flap.le.x, flap.le.y, 0), (0, 0, 1))
@@ -452,15 +504,15 @@ def main():
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
 
     if not args.structured and not args.no_bl:
-        # Add transfinite line on the front splines to get more points in the middle 
-        # (where the curvature makes it usually more spaced)
+        # Apply transfinite meshing to all three splines (front, upper, lower) 
+        # for consistent cell sizing around the airfoil/flap surfaces
         
-        # Apply to airfoil front spline
-        apply_transfinite_to_front(airfoil, args.airfoil_mesh_size, name="airfoil")
+        # Apply to airfoil
+        apply_transfinite_to_surfaces(airfoil, args.airfoil_mesh_size, name="Airfoil")
         
-        # Apply to flap front spline if present
+        # Apply to flap if present
         if args.flap_path:
-            apply_transfinite_to_front(flap, args.airfoil_mesh_size, name="flap")
+            apply_transfinite_to_surfaces(flap, args.airfoil_mesh_size, name="Flap")
         
         # Choose the nbs of points in the fan at the te:
         # Compute coef : between 10 and 25, 15 when usual mesh size but adapted to mesh size
