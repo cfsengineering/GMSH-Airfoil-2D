@@ -16,6 +16,61 @@ from gmshairfoil2d.geometry_def import (AirfoilSpline, Circle, PlaneSurface,
 from gmshairfoil2d.config_handler import read_config, merge_config_with_args, create_example_config
 
 
+def apply_transfinite_to_front(airfoil_obj, airfoil_mesh_size, name=""):
+    """
+    Apply transfinite meshing to the front spline of an airfoil or flap object.
+    This ensures better point distribution along the leading edge region with
+    a Bump distribution (more points in the middle where curvature is higher).
+    
+    Parameters
+    ----------
+    airfoil_obj : AirfoilSpline
+        The airfoil or flap object containing the front_spline
+    airfoil_mesh_size : float
+        The target mesh size to compute the number of points
+    name : str, optional
+        Name of the object (for logging purposes)
+        
+    Returns
+    -------
+    None
+        Modifies the gmsh model in place
+    """
+    # Extract the indices for the front spline region
+    # Find the leading edge location
+    k1_point = airfoil_obj.points[0]
+    k2_point = airfoil_obj.points[0]
+    
+    # Find indices that bound the front spline
+    for i, p in enumerate(airfoil_obj.points):
+        # Use proximity to find front spline boundaries
+        dist_to_le = math.sqrt((p.x - airfoil_obj.le.x)**2 + (p.y - airfoil_obj.le.y)**2)
+        if dist_to_le < 0.1:  # Within 10% chord of LE
+            if p.y > airfoil_obj.le.y:
+                k1_point = p
+            elif p.y < airfoil_obj.le.y:
+                k2_point = p
+    
+    # Get the actual coordinates for length calculation
+    c1, c2 = airfoil_obj.le.x, airfoil_obj.le.y
+    x, y = k1_point.x, k1_point.y
+    v, w = k2_point.x, k2_point.y
+    
+    # Approximate length of the front spline curve
+    l = (math.sqrt((x-c1)*(x-c1)+(y-c2)*(y-c2)) +
+         math.sqrt((v-c1)*(v-c1)+(w-c2)*(w-c2)))
+    
+    # Compute number of points: need more points as they'll be closer on the front
+    nb_points = int(3.5*l/airfoil_mesh_size)
+    
+    # Apply transfinite curve with Bump distribution (higher density in middle)
+    gmsh.model.mesh.setTransfiniteCurve(
+        airfoil_obj.front_spline.tag, nb_points, "Bump", 10)
+    
+    if name:
+        print(f"Applied transfinite meshing to {name} front spline: {nb_points} points")
+
+
 def main():
     # Instantiate the parser
     parser = argparse.ArgumentParser(
@@ -397,16 +452,16 @@ def main():
     gmsh.option.setNumber("Mesh.MeshSizeFromCurvature", 0)
 
     if not args.structured and not args.no_bl:
-        # Add transfinite line on the front to get more point in the middle (where the curvature of the le makes it usually more spaced)
-        x, y, v, w = airfoil.points[k1].x, airfoil.points[k2].y, airfoil.points[k1].x, airfoil.points[k2].y
-        c1, c2 = airfoil.le.x, airfoil.le.y
-        # To get an indication of numbers of points needed, compute approximate length of curve of front spline
-        l = (math.sqrt((x-c1)*(x-c1)+(y-c2)*(y-c2)) +
-             math.sqrt((v-c1)*(v-c1)+(w-c2)*(w-c2)))
-        # As points will be more near than mesh size on the front, need more points
-        nb_points = int(3.5*l/args.airfoil_mesh_size)
-        gmsh.model.mesh.setTransfiniteCurve(
-            airfoil.front_spline.tag, nb_points, "Bump", 10)
+        # Add transfinite line on the front splines to get more points in the middle 
+        # (where the curvature makes it usually more spaced)
+        
+        # Apply to airfoil front spline
+        apply_transfinite_to_front(airfoil, args.airfoil_mesh_size, name="airfoil")
+        
+        # Apply to flap front spline if present
+        if args.flap_path:
+            apply_transfinite_to_front(flap, args.airfoil_mesh_size, name="flap")
+        
         # Choose the nbs of points in the fan at the te:
         # Compute coef : between 10 and 25, 15 when usual mesh size but adapted to mesh size
         coef = max(10, min(25, 15*0.01/args.airfoil_mesh_size))

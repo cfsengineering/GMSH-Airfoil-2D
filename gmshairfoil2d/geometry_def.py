@@ -703,24 +703,46 @@ class AirfoilSpline:
         """
         Method to generate the three splines forming the foil.
         Only call this function when the points of the airfoil are in their final position.
+        
+        For airfoils: discretizes into upper, lower, and front splines based on x=0.05 threshold.
+        For flaps: discretizes into upper, lower, and front splines based on proximity to leading edge.
         -------
         """
 
         if getattr(self, "is_flap", False):
-
-            min_x_index = min(enumerate(self.points), key=lambda x: x[1].x)[0]
-            max_x_index = max(enumerate(self.points), key=lambda x: x[1].x)[0]
-            max_x_index = len(self.points) - 1
-
+            # For flap: find the leading edge and trailing edge
+            le_index = min(enumerate(self.points), key=lambda x: x[1].x)[0]
+            te_index = max(enumerate(self.points), key=lambda x: x[1].x)[0]
+            
             n = len(self.points)
-            k1 = (min_x_index - 5) % n
-            k2 = (min_x_index + 5) % n
-
-            self.upper_spline = Spline(self.points[max_x_index+1:] + self.points[:k1 + 1])
-            self.lower_spline = Spline(self.points[k2-1:] + self.points[:self.te_indx + 1])
-            self.front_spline = Spline(self.points[k1:k2])
+            # Define front region width (approximately 10% of total points, at least 3)
+            front_width = max(3, n // 10)
+            k1 = (le_index - front_width // 2) % n
+            k2 = (le_index + front_width // 2) % n
+            
+            # For a flap, points typically go: TE -> lower surface -> LE -> upper surface -> TE
+            # Create continuous splines that form a closed loop:
+            # lower: TE to LE, front: LE region, upper: LE to TE
+            
+            if te_index < le_index:
+                # Normal case: TE is before LE
+                # Lower: from TE to k1 (before LE front region)
+                # Front: from k1 to k2 around LE
+                # Upper: from k2 (after LE front region) to TE
+                self.lower_spline = Spline(self.points[te_index:k1+1])
+                self.front_spline = Spline(self.points[k1:k2+1])
+                self.upper_spline = Spline(self.points[k2:] + self.points[:te_index+1])
+            else:
+                # TE is after LE (wraps around)
+                # Lower: from TE to k1 (wrapping)
+                # Front: from k1 to k2 around LE
+                # Upper: from k2 to TE
+                self.lower_spline = Spline(self.points[te_index:] + self.points[:k1+1])
+                self.front_spline = Spline(self.points[k1:k2+1])
+                self.upper_spline = Spline(self.points[k2:te_index+1])
 
         else:
+            # For regular airfoils: find points at x > 0.05
             debut = True
             for p in self.points:
                 if p.x > 0.049 and debut:
