@@ -101,9 +101,9 @@ def apply_transfinite_to_surfaces(airfoil_obj, airfoil_mesh_size, name=""):
         lower_cell_size = l_lower / (nb_points_lower - 1) if nb_points_lower > 1 else 0
         
         print(f"Applied transfinite meshing to {name}:")
-        print(f"  - Front spline: {nb_points_front:3d} points, length={l_front:.4f}, cell size≈{front_cell_size:.6f}")
-        print(f"  - Upper spline: {nb_points_upper:3d} points, length={l_upper:.4f}, cell size≈{upper_cell_size:.6f}")
-        print(f"  - Lower spline: {nb_points_lower:3d} points, length={l_lower:.4f}, cell size≈{lower_cell_size:.6f}")
+        print(f"  - Front spline: {nb_points_front:3d} points, length={l_front:.4f}, cell size ~ {front_cell_size:.6f}")
+        print(f"  - Upper spline: {nb_points_upper:3d} points, length={l_upper:.4f}, cell size ~ {upper_cell_size:.6f}")
+        print(f"  - Lower spline: {nb_points_lower:3d} points, length={l_lower:.4f}, cell size ~ {lower_cell_size:.6f}")
 
 
 def main():
