@@ -194,3 +194,4 @@ gmshairfoil2d --config example/example6_custom_airfoil_flap.cfg
 ```
 
 This example shows how to load custom airfoil and flap profiles from external .dat files and generate a mesh with flap deflection, useful for using proprietary or custom-designed airfoil geometries.
+![GMSH result with 2D mesh around a custom flapped airfoil](images/example_flapped_airfoil.png)
