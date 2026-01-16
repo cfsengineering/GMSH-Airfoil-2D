@@ -1,8 +1,5 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+"""Configuration file handler for gmshairfoil2d.
 
-"""
-Configuration file handler for gmshairfoil2d.
 Supports reading and writing simple key=value configuration files.
 Empty values are skipped.
 """

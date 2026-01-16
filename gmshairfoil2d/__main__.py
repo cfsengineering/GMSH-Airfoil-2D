@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+"""Entry point for the gmshairfoil2d package."""
 
 from gmshairfoil2d.gmshairfoil2d import main
 

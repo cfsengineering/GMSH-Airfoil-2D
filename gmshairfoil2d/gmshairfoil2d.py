@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+"""Main module for GMSH airfoil 2D mesh generation."""
 
 import argparse
 import math
