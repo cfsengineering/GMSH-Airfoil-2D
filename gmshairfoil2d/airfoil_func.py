@@ -1,13 +1,78 @@
+import sys
 from pathlib import Path
 
 import numpy as np
 import requests
-import sys
 
 import gmshairfoil2d.__init__
 
 LIB_DIR = Path(gmshairfoil2d.__init__.__file__).parents[1]
 database_dir = Path(LIB_DIR, "database")
+
+
+def read_airfoil_from_file(file_path):
+    """Read airfoil coordinates from a .dat file.
+    
+    Parameters
+    ----------
+    file_path : str or Path
+        Path to airfoil data file
+    
+    Returns
+    -------
+    list
+        List of unique (x, y, 0) points sorted by original order
+    
+    Raises
+    ------
+    FileNotFoundError
+        If file does not exist
+    ValueError
+        If no valid airfoil points found
+    """
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"File {file_path} not found.")
+
+    airfoil_points = []
+    with open(file_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith(('#', 'Airfoil')):
+                continue
+            parts = line.split()
+            if len(parts) != 2:
+                continue
+            try:
+                x, y = map(float, parts)
+            except ValueError:
+                continue
+            if x > 1 and y > 1:
+                continue
+            airfoil_points.append((x, y))
+
+    if not airfoil_points:
+        raise ValueError(f"No valid airfoil points found in {file_path}")
+
+    # Split upper and lower surfaces
+    try:
+        split_index = next(i for i, (x, y) in enumerate(airfoil_points) if x >= 1.0)
+    except StopIteration:
+        split_index = len(airfoil_points) // 2
+
+    upper_points = airfoil_points[:split_index + 1]
+    lower_points = airfoil_points[split_index + 1:]
+
+    # Ensure lower points start from trailing edge
+    if lower_points and lower_points[0][0] == 0.0:
+        lower_points = lower_points[::-1]
+
+    # Combine and remove duplicates
+    x_up, y_up = zip(*upper_points) if upper_points else ([], [])
+    x_lo, y_lo = zip(*lower_points) if lower_points else ([], [])
+
+    cloud_points = [(x, y, 0) for x, y in zip([*x_up, *x_lo], [*y_up, *y_lo])]
+    return sorted(set(cloud_points), key=cloud_points.index)
 
 
 def get_all_available_airfoil_names():
@@ -34,102 +99,92 @@ def get_all_available_airfoil_names():
 
 def get_airfoil_file(airfoil_name):
     """
-    Request the airfoil .dat file at m-selig.ae.illinois.edu and stores it (if found) in the
-    database folder
+    Request the airfoil .dat file from m-selig.ae.illinois.edu and store it in database folder.
 
     Parameters
     ----------
-    airfoil_name : srt
-        name of the airfoil
+    airfoil_name : str
+        Name of the airfoil
+    
+    Raises
+    ------
+    SystemExit
+        If airfoil not found or network error occurs
     """
-
     if not database_dir.exists():
         database_dir.mkdir()
 
-    url = f"https://m-selig.ae.illinois.edu/ads/coord/{airfoil_name}.dat"
-
-    r = requests.get(url)
-
-    try:
-        r = requests.get(url, timeout=10) # Aggiungi sempre un timeout
-        if r.status_code != 200:
-             # Invece di raise Exception, print e exit pulito
-             print(f"❌ Error: Could not find airfoil '{airfoil_name}' on UIUC database.")
-             import sys
-             sys.exit(1)
-    except requests.exceptions.RequestException as e:
-        print(f"❌ Network Error: Could not connect to the database. Check your internet.")
-        import sys
-        sys.exit(1)
-
     file_path = Path(database_dir, f"{airfoil_name}.dat")
+    if file_path.exists():
+        return
 
-    if not file_path.exists():
+    url = f"https://m-selig.ae.illinois.edu/ads/coord/{airfoil_name}.dat"
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code != 200:
+            print(f"❌ Error: Could not find airfoil '{airfoil_name}' on UIUC database.")
+            sys.exit(1)
         with open(file_path, "wb") as f:
-            f.write(r.content)
+            f.write(response.content)
+    except requests.exceptions.RequestException:
+        print(f"❌ Network Error: Could not connect to the database. Check your internet.")
+        sys.exit(1)
 
 
 def get_airfoil_points(airfoil_name):
+    """Load airfoil points from the database.
+    
+    Parameters
+    ----------
+    airfoil_name : str
+        Name of the airfoil in the database
+    
+    Returns
+    -------
+    list
+        List of unique (x, y, 0) points
+    
+    Raises
+    ------
+    ValueError
+        If no valid points found for the airfoil
+    """
+    get_airfoil_file(airfoil_name)
+    airfoil_file = Path(database_dir, f"{airfoil_name}.dat")
 
     airfoil_points = []
-    upper_points = []
-    lower_points = []
-    upper_len = 0
-    lower_len = 0
-    reverse_lower = False
-
-    get_airfoil_file(airfoil_name)
-    airfoil_file = Path(database_dir, airfoil_name + ".dat")
-
     with open(airfoil_file) as f:
-        lines = f.readlines()
+        for line in f:
+            try:
+                x, y = map(float, line.strip().split())
+            except ValueError:
+                continue
+            if x > 1 and y > 1:
+                continue
+            airfoil_points.append((x, y))
 
-    for line in lines:
-
-        # Catch the text lines
-        try:
-            x, y = map(float, line.strip("\n").split())
-        except ValueError:
-            continue
-
-        # Catch the line with the upper and lower number of points
-        if x > 1 and y > 1:
-            upper_len = int(x)
-            lower_len = int(y)
-            continue
-
-        # Catch the x, y coordinates
-        airfoil_points.append((x, y))
+    if not airfoil_points:
+        raise ValueError(f"No valid points found for airfoil {airfoil_name}")
 
     n_points = len(airfoil_points)
+    upper_len = n_points // 2
 
-    if not upper_len or not lower_len:
-
-        upper_len = n_points // 2
-
-        for i, (x, y) in enumerate(airfoil_points):
-            if x == y == 0:
-                upper_len = i
-                break
-    else:
-        reverse_lower = True
+    # Try to find split point at (0, 0)
+    for i, (x, y) in enumerate(airfoil_points):
+        if x == y == 0:
+            upper_len = i
+            break
 
     upper_points = airfoil_points[:upper_len]
     lower_points = airfoil_points[upper_len:]
-
-    if reverse_lower:
+    
+    if lower_points and lower_points[0][0] == 0:
         lower_points = lower_points[::-1]
 
-    assert len(upper_points) + len(lower_points) == n_points
+    x_up, y_up = zip(*upper_points) if upper_points else ([], [])
+    x_lo, y_lo = zip(*lower_points) if lower_points else ([], [])
 
-    x_up, y_up = zip(*[points for points in upper_points])
-    x_lo, y_lo = zip(*[points for points in lower_points])
-
-    x = [*x_up, *x_lo]
-    y = [*y_up, *y_lo]
-
-    cloud_points = [(x[k], y[k], 0) for k in range(0, len(x))]
-    # remove duplicated points
+    cloud_points = [(x, y, 0) for x, y in zip([*x_up, *x_lo], [*y_up, *y_lo])]
     return sorted(set(cloud_points), key=cloud_points.index)
 
 

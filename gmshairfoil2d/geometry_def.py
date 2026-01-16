@@ -1,152 +1,118 @@
 """
-This script contain the definition of geometrical objects needed to build the geometry.
+This module contains the definition of geometrical objects needed to build the geometry.
 """
 
-from operator import attrgetter
-import gmsh
-import numpy as np
 import math
 import sys
+from operator import attrgetter
+
+import gmsh
+import numpy as np
 
 
 class Point:
-    """
-    A class to represent the point geometrical object of gmsh
-
-    ...
+    """A class to represent a point geometrical object in gmsh.
 
     Attributes
     ----------
     x : float
-        position in x
+        Position in x
     y : float
-        position in y
+        Position in y
     z : float
-        position in z
+        Position in z
     mesh_size : float
-        If mesh_size is > 0, add a meshing constraint
-            at that point
+        Meshing constraint size at this point (if > 0)
     """
 
     def __init__(self, x, y, z, mesh_size):
-
         self.x = x
         self.y = y
         self.z = z
         self.mesh_size = mesh_size
         self.dim = 0
-
         # create the gmsh object and store the tag of the geometric object
-        self.tag = gmsh.model.geo.addPoint(
-            self.x, self.y, self.z, self.mesh_size)
+        self.tag = gmsh.model.geo.addPoint(self.x, self.y, self.z, self.mesh_size)
 
     def rotation(self, angle, origin, axis):
-        """
-        Method to rotate the object Point
-        ...
+        """Rotate the point around an axis.
+        
         Parameters
         ----------
         angle : float
-            angle of rotation in rad
+            Angle of rotation in radians
         origin : tuple
-            tuple of point (x,y,z) which is the origin of the rotation
+            Tuple of (x, y, z) defining the rotation origin
         axis : tuple
-            tuple of point (x,y,z) which represent the axis of rotation
+            Tuple of (x, y, z) defining the rotation axis
         """
-        gmsh.model.geo.rotate(
-            [(self.dim, self.tag)],
-            *origin,
-            *axis,
-            angle,
-        )
+        gmsh.model.geo.rotate([(self.dim, self.tag)], *origin, *axis, angle)
 
     def translation(self, vector):
-        """
-        Method to translate the object Point
-
-        ...
-
+        """Translate the point.
+        
         Parameters
         ----------
-        direction : tuple
-            tuple of point (x,y,z) which represent the direction of the translation
+        vector : tuple
+            Tuple of (x, y, z) defining the translation vector
         """
         gmsh.model.geo.translate([(self.dim, self.tag)], *vector)
 
 
 class Line:
-    """
-    A class to represent the Line geometrical object of gmsh
-
-    ...
+    """A class to represent a line geometrical object in gmsh.
 
     Attributes
     ----------
     start_point : Point
-        first point of the line
+        First point of the line
     end_point : Point
-        second point of the line
+        Second point of the line
     """
 
     def __init__(self, start_point, end_point):
         self.start_point = start_point
         self.end_point = end_point
-
         self.dim = 1
-
         # create the gmsh object and store the tag of the geometric object
-        self.tag = gmsh.model.geo.addLine(
-            self.start_point.tag, self.end_point.tag)
+        self.tag = gmsh.model.geo.addLine(self.start_point.tag, self.end_point.tag)
 
     def rotation(self, angle, origin, axis):
-        """
-        Method to rotate the object Line
-        ...
-
+        """Rotate the line around an axis.
+        
         Parameters
         ----------
         angle : float
-            angle of rotation in rad
+            Angle of rotation in radians
         origin : tuple
-            tuple of point (x,y,z) which is the origin of the rotation
+            Tuple of (x, y, z) defining the rotation origin
         axis : tuple
-            tuple of point (x,y,z) which represent the axis of rotation
+            Tuple of (x, y, z) defining the rotation axis
         """
-        gmsh.model.geo.rotate(
-            [(self.dim, self.tag)],
-            *origin,
-            *axis,
-            angle,
-        )
+        gmsh.model.geo.rotate([(self.dim, self.tag)], *origin, *axis, angle)
 
     def translation(self, vector):
-        """
-        Method to translate the object Line
-        ...
-
+        """Translate the line.
+        
         Parameters
         ----------
-        direction : tuple
-            tuple of point (x,y,z) which represent the direction of the translation
+        vector : tuple
+            Tuple of (x, y, z) defining the translation vector
         """
         gmsh.model.geo.translate([(self.dim, self.tag)], *vector)
 
 
 class Spline:
-    """
-    A class to represent the Spine geometrical object of gmsh
-
-    ...
+    """A class to represent a Spline geometrical object in gmsh.
 
     Attributes
     ----------
-    points_list : list(Point)
-        list of Point object forming the Spline
+    point_list : list of Point
+        List of Point objects forming the Spline
     """
 
     def __init__(self, point_list):
         self.point_list = point_list
-
         # generate the Lines tag list to follow
         self.tag_list = [point.tag for point in self.point_list]
         self.dim = 1
@@ -154,48 +120,36 @@ class Spline:
         self.tag = gmsh.model.geo.addSpline(self.tag_list)
 
     def rotation(self, angle, origin, axis):
-        """
-        Method to rotate the object Spline
-
-        Rotate the spline itself (curve, startpoint, endpoint), then rotate the intermediate points
-        ...
-
+        """Rotate the spline around an axis.
+        
+        Rotates the spline curve and all intermediate points.
+        
         Parameters
         ----------
         angle : float
-            angle of rotation in rad
+            Angle of rotation in radians
         origin : tuple
-            tuple of point (x,y,z) which is the origin of the rotation
+            Tuple of (x, y, z) defining the rotation origin
         axis : tuple
-            tuple of point (x,y,z) which represent the axis of rotation
+            Tuple of (x, y, z) defining the rotation axis
         """
-        gmsh.model.geo.rotate(
-            [(self.dim, self.tag)],
-            *origin,
-            *axis,
-            angle,
-        )
-
-        [
+        gmsh.model.geo.rotate([(self.dim, self.tag)], *origin, *axis, angle)
+        for interm_point in self.point_list[1:-1]:
             interm_point.rotation(angle, origin, axis)
-            for interm_point in self.point_list[1:-1]
-        ]
 
     def translation(self, vector):
-        """
-        Method to translate the object Line
-
-        Translate the spline itself (curve, startpoint,endpoint), then translate the indermediate points
-        ...
-
+        """Translate the spline.
+        
+        Translates the spline curve and all intermediate points.
+        
         Parameters
         ----------
-        direction : tuple
-            tuple of point (x,y,z) which represent the direction of the translation
+        vector : tuple
+            Tuple of (x, y, z) defining the translation vector
         """
         gmsh.model.geo.translate([(self.dim, self.tag)], *vector)
-        [interm_point.translation(vector)
-         for interm_point in self.point_list[1:-1]]
+        for interm_point in self.point_list[1:-1]:
+            interm_point.translation(vector)
 
 
 class CurveLoop:
@@ -606,11 +560,12 @@ class AirfoilSpline:
         boundary condition
     """
 
-    def __init__(self, point_cloud, mesh_size,  name="airfoil"):
+    def __init__(self, point_cloud, mesh_size,  name, is_flap=False):
 
         self.name = name
         self.dim = 1
         self.mesh_size = mesh_size
+        self.is_flap = is_flap
 
         # Generate Points object from the point_cloud
         self.points = [
@@ -630,11 +585,17 @@ class AirfoilSpline:
         vertical = False
         # If two (in the end) are so close in coordinate x, they are vertical and not just neighbouring point (examples below)
         # Just need to check if the one before or after and then label them correctly
-        if self.points[self.te_indx-1].x > self.te.x-0.0001:
+        # Tollerance is the distance between the two points, might be necessary to change it
+        if is_flap:
+            tollerance = 0.001
+        else:
+            tollerance = 0.0001
+
+        if self.points[self.te_indx-1].x > self.te.x-tollerance:
             te_up_indx = self.te_indx-1
             te_down_indx = self.te_indx
             vertical = True
-        elif self.points[self.te_indx+1].x > self.te.x-0.0001:
+        elif self.points[self.te_indx+1].x > self.te.x-tollerance:
             te_up_indx = self.te_indx
             te_down_indx = self.te_indx+1
             vertical = True
@@ -694,37 +655,66 @@ class AirfoilSpline:
 
     def gen_skin(self):
         """
-        Method to generate the three splines forming the foil, Only call this function when the points
-        of the airfoil are in their final position
+        Method to generate the three splines forming the foil.
+        Only call this function when the points of the airfoil are in their final position.
+        
+        For airfoils: discretizes into upper, lower, and front splines based on x=0.05 threshold.
+        For flaps: discretizes into upper, lower, and front splines based on proximity to leading edge.
         -------
         """
-        # Find the first point after 0.049 in the upper band lower spline
-        debut = True
-        for p in self.points:
-            if p.x > 0.049 and debut:
-                k1 = self.points.index(p)
-                debut = False
-            if p.x <= 0.049 and not debut:
-                k2 = self.points.index(p)-1
-                break
 
-        # create a spline from the up middle point to the trailing edge (up part)
-        self.upper_spline = Spline(
-            self.points[k1: self.te_indx + 1])
+        if getattr(self, "is_flap", False):
+            # For flap: find the leading edge and trailing edge
+            le_index = min(enumerate(self.points), key=lambda x: x[1].x)[0]
+            te_index = max(enumerate(self.points), key=lambda x: x[1].x)[0]
+            
+            n = len(self.points)
+            # Define front region width (approximately 10% of total points, at least 3)
+            front_width = max(3, n // 10)
+            k1 = (le_index - front_width // 2) % n
+            k2 = (le_index + front_width // 2) % n
+            
+            # For a flap, points typically go: TE -> lower surface -> LE -> upper surface -> TE
+            # Create continuous splines that form a closed loop:
+            # lower: TE to LE, front: LE region, upper: LE to TE
+            
+            if te_index < le_index:
+                # Normal case: TE is before LE
+                # Lower: from TE to k1 (before LE front region)
+                # Front: from k1 to k2 around LE
+                # Upper: from k2 (after LE front region) to TE
+                self.lower_spline = Spline(self.points[te_index:k1+1])
+                self.front_spline = Spline(self.points[k1:k2+1])
+                self.upper_spline = Spline(self.points[k2:] + self.points[:te_index+1])
+            else:
+                # TE is after LE (wraps around)
+                # Lower: from TE to k1 (wrapping)
+                # Front: from k1 to k2 around LE
+                # Upper: from k2 to TE
+                self.lower_spline = Spline(self.points[te_index:] + self.points[:k1+1])
+                self.front_spline = Spline(self.points[k1:k2+1])
+                self.upper_spline = Spline(self.points[k2:te_index+1])
 
-        # create a spline from the trailing edge to the up down point (down part)
-        self.lower_spline = Spline(
-            self.points[self.te_indx:k2+1]
-        )
+        else:
+            # For regular airfoils: find points at x > 0.05
+            debut = True
+            for p in self.points:
+                if p.x > 0.049 and debut:
+                    k1 = self.points.index(p)
+                    debut = False
+                if p.x <= 0.049 and not debut:
+                    k2 = self.points.index(p)-1
+                    break
 
-        # Create a spline for the front part of the airfoil
-        self.front_spline = Spline(self.points[k2:]+self.points[:k1+1])
+            self.upper_spline = Spline(self.points[k1: self.te_indx + 1])
+            self.lower_spline = Spline(self.points[self.te_indx:k2+1])
+            self.front_spline = Spline(self.points[k2:] + self.points[:k1 + 1])
 
         return k1, k2
 
     def gen_skin_struct(self, k1, k2):
         """
-        Method to generate the two splines forming the foil for structural mesh, Only call this function when the points
+        Method to generate the two splines forming the foil for structured mesh, Only call this function when the points
         of the airfoil are in their final position
         -------
         """
@@ -871,10 +861,36 @@ def outofbounds(airfoil, box, radius, blthick):
 
 class CType:
     """
-    A class to represent a C-type structured mesh.
+    A class to represent a C-type mesh domain with optional structured meshing.
+    Can be used for both fully structured meshes and as a structured farfield
+    for hybrid (unstructured) meshes.
     """
 
-    def __init__(self, airfoil_spline, dx_trail, dy, mesh_size, height, ratio, aoa):
+    def __init__(self, airfoil_spline, dx_trail, dy, mesh_size, height=None,
+                 ratio=None, aoa=0, structured=True):
+        """
+        Initialize a C-type mesh domain.
+
+        Parameters
+        ----------
+        airfoil_spline : AirfoilSpline
+            The airfoil spline object
+        dx_trail : float
+            Length of trailing domain extension [m]
+        dy : float
+            Total height of the domain [m]
+        mesh_size : float
+            Mesh size for the domain
+        height : float, optional
+            Height of first boundary layer (for structured mesh only)
+        ratio : float, optional
+            Growth ratio of boundary layer (for structured mesh only)
+        aoa : float, optional
+            Angle of attack in radians (default 0)
+        structured : bool, optional
+            If True, create transfinite curves and surfaces for structured mesh
+            (default True)
+        """
         z = 0
         self.airfoil_spline = airfoil_spline
 
@@ -890,6 +906,7 @@ class CType:
         self.firstheight = height
         self.ratio = ratio
         self.aoa = aoa
+        self.structured = structured
 
         # First compute k1 & k2 the first coordinate after 0.041 (up & down)
         debut = True
@@ -901,10 +918,19 @@ class CType:
                 k2 = airfoil_spline.points.index(p)-1
                 break
 
-        upper_spline_back, lower_spline_back = self.airfoil_spline.gen_skin_struct(
-            k1, k2)
-        self.le_upper_point = airfoil_spline.points[k1]
-        self.le_lower_point = airfoil_spline.points[k2]
+        # Only call gen_skin_struct if creating structured mesh
+        # For unstructured, the airfoil already has proper splines from gen_skin()
+        if self.structured:
+            upper_spline_back, lower_spline_back = self.airfoil_spline.gen_skin_struct(
+                k1, k2)
+            self.le_upper_point = airfoil_spline.points[k1]
+            self.le_lower_point = airfoil_spline.points[k2]
+        else:
+            # For unstructured mesh, use the regular splines already generated
+            self.le_upper_point = airfoil_spline.points[k1]
+            self.le_lower_point = airfoil_spline.points[k2]
+            upper_spline_back = airfoil_spline.upper_spline
+            lower_spline_back = airfoil_spline.lower_spline
 
         # Create the new front spline (from the two front parts)
         upper_points_front = airfoil_spline.points[:k1+1]
@@ -1010,161 +1036,189 @@ class CType:
         #        --------------------------------------
         #                      L6               L5
 
-        # Now we compute all of the parameters to have smooth mesh around mesh size
+        # Store flag and parameters for later use
+        self.structured = structured
+        self.k1 = k1
+        self.k2 = k2
 
-        # HEIGHT
-        # Compute number of nodes needed to have the desired first layer height (=nb of layer (N) +1)
-        # Computation : we have that dy/2 is total height, and let a=first layer height
-        # dy/2= a + a*ratio + a*ratio^2 + ... + a*ratio^(N-1) and rearrange to get the following equation
-        nb_points_y = 3+int(math.log(1+dy/2/height*(ratio-1))/math.log(ratio))
-        progression_y = ratio
-        progression_y_inv = 1/ratio
+        if self.structured:
+            # Only create structured mesh if requested
+            # Now we compute all of the parameters to have smooth mesh around mesh size
 
-        # WAKE
-        # Set a progression to adapt slightly the wake (don't need as much precision further away from airfoil)
-        progression_wake = 1/1.025
-        progression_wake_inv = 1.025
-        # Set number of points in x direction at wake to get desired meshsize on the one next to airfoil
-        # (solve dx_trail = meshsize + meshsize*1.02 + meshsize*1.02^2 + ... + meshsize*1.02^(N-1) with N=nb of intervals)
-        nb_points_wake = int(
-            math.log(1+dx_trail*0.025/mesh_size_end)/math.log(1.025))+1
+            # HEIGHT
+            # Compute number of nodes needed to have the desired first layer height (=nb of layer (N) +1)
+            # Computation : we have that dy/2 is total height, and let a=first layer height
+            # dy/2= a + a*ratio + a*ratio^2 + ... + a*ratio^(N-1) and rearrange to get the following equation
+            nb_points_y = 3+int(math.log(1+dy/2/height*(ratio-1))/math.log(ratio))
+            progression_y = ratio
+            progression_y_inv = 1/ratio
 
-        # AIRFOIL CENTER
-        # Set number of points on upper and lower part of airfoil. Want mesh size at the end (b) to be meshsizeend, and at the front (a) meshsizeend/coef to be more coherent with airfoilfront
-        if mesh_size_end > 0.05:
-            coeffdiv = 4
-        elif mesh_size_end >= 0.03:
-            coeffdiv = 3
-        else:
-            coeffdiv = 2
-        a, b, l = mesh_size_end/coeffdiv, mesh_size_end, airfoil_spline.te.x
-        # So compute ratio and nb of points accordingly: (solve l=a+a*r+a*r^2+a*r^(N-1) and a*r^(N-1)=b, and N=nb of intervals=nb of points-1)
-        ratio_airfoil = (l-a)/(l-b)
-        if l-b < 0:
-            nb_airfoil = 3
-        else:
-            nb_airfoil = max(3, int(math.log(b/a)/math.log(ratio_airfoil))+2)
+            # WAKE
+            # Set a progression to adapt slightly the wake (don't need as much precision further away from airfoil)
+            progression_wake = 1/1.025
+            progression_wake_inv = 1.025
+            # Set number of points in x direction at wake to get desired meshsize on the one next to airfoil
+            # (solve dx_trail = meshsize + meshsize*1.02 + meshsize*1.02^2 + ... + meshsize*1.02^(N-1) with N=nb of intervals)
+            nb_points_wake = int(
+                math.log(1+dx_trail*0.025/mesh_size_end)/math.log(1.025))+1
 
-        # AIRFOIL FRONT
-        # Now we can try to put the good number of point on the front to have a good mesh
-        # First we estimate the length of the spline
-        x, y, v, w = airfoil_spline.points[k1].x, airfoil_spline.points[
-            k2].y, airfoil_spline.points[k1].x, airfoil_spline.points[k2].y
-        c1, c2 = airfoil_spline.le.x, airfoil_spline.le.y
-        estim_length = (math.sqrt((x-c1)*(x-c1)+(y-c2)*(y-c2)) +
-                        math.sqrt((v-c1)*(v-c1)+(w-c2)*(w-c2)))+0.01
-        # Compute nb of points if they were all same size, multiply par a factor (3) to have an okay number (and good when apply bump)
-        nb_airfoil_front = max(
-            4, int(estim_length/mesh_size_end*coeffdiv*3))+4
+            # AIRFOIL CENTER
+            # Set number of points on upper and lower part of airfoil. Want mesh size at the end (b) to be meshsizeend, and at the front (a) meshsizeend/coef to be more coherent with airfoilfront
+            if mesh_size_end > 0.05:
+                coeffdiv = 4
+            elif mesh_size_end >= 0.03:
+                coeffdiv = 3
+            else:
+                coeffdiv = 2
+            a, b, l = mesh_size_end/coeffdiv, mesh_size_end, airfoil_spline.te.x
+            # So compute ratio and nb of points accordingly: (solve l=a+a*r+a*r^2+a*r^(N-1) and a*r^(N-1)=b, and N=nb of intervals=nb of points-1)
+            ratio_airfoil = (l-a)/(l-b)
+            if l-b < 0:
+                nb_airfoil = 3
+            else:
+                nb_airfoil = max(3, int(math.log(b/a)/math.log(ratio_airfoil))+2)
 
-        # Now we set all the corresponding transfinite curve we need (with our coefficient computed before)
+            # AIRFOIL FRONT
+            # Now we can try to put the good number of point on the front to have a good mesh
+            # First we estimate the length of the spline
+            x, y, v, w = airfoil_spline.points[k1].x, airfoil_spline.points[
+                k2].y, airfoil_spline.points[k1].x, airfoil_spline.points[k2].y
+            c1, c2 = airfoil_spline.le.x, airfoil_spline.le.y
+            estim_length = (math.sqrt((x-c1)*(x-c1)+(y-c2)*(y-c2)) +
+                            math.sqrt((v-c1)*(v-c1)+(w-c2)*(w-c2)))+0.01
+            # Compute nb of points if they were all same size, multiply par a factor (3) to have an okay number (and good when apply bump)
+            nb_airfoil_front = max(
+                4, int(estim_length/mesh_size_end*coeffdiv*3))+4
 
-        # transfinite curve A
-        gmsh.model.geo.mesh.setTransfiniteCurve(
-            self.lines[7].tag, nb_points_y, "Progression", progression_y_inv)  # same for plane E
-        if mesh_size_end < 0.04:
+            # Now we set all the corresponding transfinite curve we need (with our coefficient computed before)
+
+            # transfinite curve A
             gmsh.model.geo.mesh.setTransfiniteCurve(
-                spline_front, nb_airfoil_front, "Bump", 12)
-        else:
+                self.lines[7].tag, nb_points_y, "Progression", progression_y_inv)  # same for plane E
+            if mesh_size_end < 0.04:
+                gmsh.model.geo.mesh.setTransfiniteCurve(
+                    spline_front, nb_airfoil_front, "Bump", 12)
+            else:
+                gmsh.model.geo.mesh.setTransfiniteCurve(
+                    spline_front, nb_airfoil_front, "Bump", 7)
             gmsh.model.geo.mesh.setTransfiniteCurve(
-                spline_front, nb_airfoil_front, "Bump", 7)
-        gmsh.model.geo.mesh.setTransfiniteCurve(
-            self.lines[0].tag, nb_points_y, "Progression", progression_y)  # same for plane B
-        # Because of different length of L1 and L6, need a bigger coefficient when point 1 and 7 are really far (coef is 1 when far and 9 when close)
-        coef = 8/3*(pt1x+pt7x)/2+31/3
-        if dy < 6:
-            coef = (coef+2)/3
-        if dy <= 3:
-            coef = (coef + 2)/3
-        gmsh.model.geo.mesh.setTransfiniteCurve(
-            self.circle_arc, nb_airfoil_front, "Bump", 1/coef)
+                self.lines[0].tag, nb_points_y, "Progression", progression_y)  # same for plane B
+            # Because of different length of L1 and L6, need a bigger coefficient when point 1 and 7 are really far (coef is 1 when far and 9 when close)
+            coef = 8/3*(pt1x+pt7x)/2+31/3
+            if dy < 6:
+                coef = (coef+2)/3
+            if dy <= 3:
+                coef = (coef + 2)/3
+            gmsh.model.geo.mesh.setTransfiniteCurve(
+                self.circle_arc, nb_airfoil_front, "Bump", 1/coef)
 
         # transfinite curve B
-        gmsh.model.geo.mesh.setTransfiniteCurve(
-            self.lines[8].tag, nb_points_y, "Progression", progression_y)  # same for plane C
-        gmsh.model.geo.mesh.setTransfiniteCurve(
-            upper_spline_back.tag, nb_airfoil, "Progression", ratio_airfoil)
-        # For L1, we adapt depeding if the curve is much longer than 1 or not (if goes "far in the front")
-        if pt1x < airfoil_spline.le.x-1.5:
             gmsh.model.geo.mesh.setTransfiniteCurve(
-                self.lines[1].tag, nb_airfoil, "Progression", 1/ratio_airfoil)
-        elif pt1x < airfoil_spline.le.x-0.7:
+                self.lines[8].tag, nb_points_y, "Progression", progression_y)  # same for plane C
             gmsh.model.geo.mesh.setTransfiniteCurve(
-                self.lines[1].tag, nb_airfoil, "Progression", 1/math.sqrt(ratio_airfoil))
+                upper_spline_back.tag, nb_airfoil, "Progression", ratio_airfoil)
+            # For L1, we adapt depeding if the curve is much longer than 1 or not (if goes "far in the front")
+            if pt1x < airfoil_spline.le.x-1.5:
+                gmsh.model.geo.mesh.setTransfiniteCurve(
+                    self.lines[1].tag, nb_airfoil, "Progression", 1/ratio_airfoil)
+            elif pt1x < airfoil_spline.le.x-0.7:
+                gmsh.model.geo.mesh.setTransfiniteCurve(
+                    self.lines[1].tag, nb_airfoil, "Progression", 1/math.sqrt(ratio_airfoil))
+            else:
+                gmsh.model.geo.mesh.setTransfiniteCurve(
+                    self.lines[1].tag, nb_airfoil)
+
+            # transfinite curve C
+            gmsh.model.geo.mesh.setTransfiniteCurve(
+                self.lines[2].tag, nb_points_wake, "Progression", progression_wake_inv)
+            gmsh.model.geo.mesh.setTransfiniteCurve(
+                self.lines[3].tag, nb_points_y, "Progression", progression_y_inv)
+            gmsh.model.geo.mesh.setTransfiniteCurve(
+                self.lines[10].tag, nb_points_wake, "Progression", progression_wake)  # same for plane D
+
+            # transfinite curve D
+            gmsh.model.geo.mesh.setTransfiniteCurve(
+                self.lines[9].tag, nb_points_y, "Progression", progression_y)  # same for plane E
+            gmsh.model.geo.mesh.setTransfiniteCurve(
+                self.lines[4].tag, nb_points_y, "Progression", progression_y)
+            gmsh.model.geo.mesh.setTransfiniteCurve(
+                self.lines[5].tag, nb_points_wake, "Progression", progression_wake)
+
+            # transfinite curve E
+            gmsh.model.geo.mesh.setTransfiniteCurve(
+                lower_spline_back.tag, nb_airfoil, "Progression", 1/ratio_airfoil)
+            # For L6, we adapt depeding if the line is much longer than 1 or not (if goes "far in the front")
+            if pt7x < airfoil_spline.le.x-1.5:
+                gmsh.model.geo.mesh.setTransfiniteCurve(
+                    self.lines[6].tag, nb_airfoil, "Progression", ratio_airfoil)
+            elif pt7x < airfoil_spline.le.x-0.4:
+                gmsh.model.geo.mesh.setTransfiniteCurve(
+                    self.lines[6].tag, nb_airfoil, "Progression", math.sqrt(ratio_airfoil))
+            else:
+                gmsh.model.geo.mesh.setTransfiniteCurve(
+                    self.lines[6].tag, nb_airfoil)
+
+            # Now we add the surfaces
+
+            # transfinite surface A (forces structured mesh)
+            c1 = gmsh.model.geo.addCurveLoop(
+                [self.lines[7].tag, spline_front, self.lines[0].tag, - self.circle_arc])
+            surf1 = gmsh.model.geo.addPlaneSurface([c1])
+            gmsh.model.geo.mesh.setTransfiniteSurface(surf1)
+
+            # transfinite surface B
+            c2 = gmsh.model.geo.addCurveLoop(
+                [self.lines[0].tag, self.lines[1].tag, - self.lines[8].tag, - upper_spline_back.tag])
+            surf2 = gmsh.model.geo.addPlaneSurface([c2])
+            gmsh.model.geo.mesh.setTransfiniteSurface(surf2)
+
+            # transfinite surface C
+            c3 = gmsh.model.geo.addCurveLoop(
+                [self.lines[8].tag, self.lines[2].tag, self.lines[3].tag, self.lines[10].tag])
+            surf3 = gmsh.model.geo.addPlaneSurface([c3])
+            gmsh.model.geo.mesh.setTransfiniteSurface(surf3)
+
+            # transfinite surface D
+            c4 = gmsh.model.geo.addCurveLoop(
+                [- self.lines[9].tag, - self.lines[10].tag, self.lines[4].tag, self.lines[5].tag])
+            surf4 = gmsh.model.geo.addPlaneSurface([c4])
+            gmsh.model.geo.mesh.setTransfiniteSurface(surf4)
+
+            # transfinite surface E
+            c5 = gmsh.model.geo.addCurveLoop(
+                [self.lines[7].tag, - lower_spline_back.tag, self.lines[9].tag, self.lines[6].tag])
+            surf5 = gmsh.model.geo.addPlaneSurface([c5])
+            gmsh.model.geo.mesh.setTransfiniteSurface(surf5)
+            self.curveloops = [c1, c2, c3, c4, c5]
+            self.surfaces = [surf1, surf2, surf3, surf4, surf5]
+
+            # Lastly, recombine surface to create quadrilateral elements
+            gmsh.model.geo.mesh.setRecombine(2, surf1, 90)
+            gmsh.model.geo.mesh.setRecombine(2, surf2, 90)
+            gmsh.model.geo.mesh.setRecombine(2, surf3, 90)
+            gmsh.model.geo.mesh.setRecombine(2, surf4, 90)
+            gmsh.model.geo.mesh.setRecombine(2, surf5, 90)
         else:
-            gmsh.model.geo.mesh.setTransfiniteCurve(
-                self.lines[1].tag, nb_airfoil)
+            # For non-structured (hybrid) mesh, create C-type farfield boundary
+            # Only create the outer curve loop - PlaneSurface will use it as a hole
+            # Outer loop: circle_arc (p7→p1) + lines[1:7] (p1→p2→p3→p4→p5→p6→p7)
+            curve_loop = gmsh.model.geo.addCurveLoop(
+                [self.circle_arc] +
+                [self.lines[i].tag for i in range(1, 7)]
+            )
+            self.surfaces = []
+            self.curveloops = [curve_loop]
 
-        # transfinite curve C
-        gmsh.model.geo.mesh.setTransfiniteCurve(
-            self.lines[2].tag, nb_points_wake, "Progression", progression_wake_inv)
-        gmsh.model.geo.mesh.setTransfiniteCurve(
-            self.lines[3].tag, nb_points_y, "Progression", progression_y_inv)
-        gmsh.model.geo.mesh.setTransfiniteCurve(
-            self.lines[10].tag, nb_points_wake, "Progression", progression_wake)  # same for plane D
-
-        # transfinite curve D
-        gmsh.model.geo.mesh.setTransfiniteCurve(
-            self.lines[9].tag, nb_points_y, "Progression", progression_y)  # same for plane E
-        gmsh.model.geo.mesh.setTransfiniteCurve(
-            self.lines[4].tag, nb_points_y, "Progression", progression_y)
-        gmsh.model.geo.mesh.setTransfiniteCurve(
-            self.lines[5].tag, nb_points_wake, "Progression", progression_wake)
-
-        # transfinite curve E
-        gmsh.model.geo.mesh.setTransfiniteCurve(
-            lower_spline_back.tag, nb_airfoil, "Progression", 1/ratio_airfoil)
-        # For L6, we adapt depeding if the line is much longer than 1 or not (if goes "far in the front")
-        if pt7x < airfoil_spline.le.x-1.5:
-            gmsh.model.geo.mesh.setTransfiniteCurve(
-                self.lines[6].tag, nb_airfoil, "Progression", ratio_airfoil)
-        elif pt7x < airfoil_spline.le.x-0.4:
-            gmsh.model.geo.mesh.setTransfiniteCurve(
-                self.lines[6].tag, nb_airfoil, "Progression", math.sqrt(ratio_airfoil))
-        else:
-            gmsh.model.geo.mesh.setTransfiniteCurve(
-                self.lines[6].tag, nb_airfoil)
-
-        # Now we add the surfaces
-
-        # transfinite surface A (forces structured mesh)
-        c1 = gmsh.model.geo.addCurveLoop(
-            [self.lines[7].tag, spline_front, self.lines[0].tag, - self.circle_arc])
-        surf1 = gmsh.model.geo.addPlaneSurface([c1])
-        gmsh.model.geo.mesh.setTransfiniteSurface(surf1)
-
-        # transfinite surface B
-        c2 = gmsh.model.geo.addCurveLoop(
-            [self.lines[0].tag, self.lines[1].tag, - self.lines[8].tag, - upper_spline_back.tag])
-        surf2 = gmsh.model.geo.addPlaneSurface([c2])
-        gmsh.model.geo.mesh.setTransfiniteSurface(surf2)
-
-        # transfinite surface C
-        c3 = gmsh.model.geo.addCurveLoop(
-            [self.lines[8].tag, self.lines[2].tag, self.lines[3].tag, self.lines[10].tag])
-        surf3 = gmsh.model.geo.addPlaneSurface([c3])
-        gmsh.model.geo.mesh.setTransfiniteSurface(surf3)
-
-        # transfinite surface D
-        c4 = gmsh.model.geo.addCurveLoop(
-            [- self.lines[9].tag, - self.lines[10].tag, self.lines[4].tag, self.lines[5].tag])
-        surf4 = gmsh.model.geo.addPlaneSurface([c4])
-        gmsh.model.geo.mesh.setTransfiniteSurface(surf4)
-
-        # transfinite surface E
-        c5 = gmsh.model.geo.addCurveLoop(
-            [self.lines[7].tag, - lower_spline_back.tag, self.lines[9].tag, self.lines[6].tag])
-        surf5 = gmsh.model.geo.addPlaneSurface([c5])
-        gmsh.model.geo.mesh.setTransfiniteSurface(surf5)
-        self.curveloops = [c1, c2, c3, c4, c5]
-        self.surfaces = [surf1, surf2, surf3, surf4, surf5]
-
-        # Lastly, recombine surface to create quadrilateral elements
-        gmsh.model.geo.mesh.setRecombine(2, surf1, 90)
-        gmsh.model.geo.mesh.setRecombine(2, surf2, 90)
-        gmsh.model.geo.mesh.setRecombine(2, surf3, 90)
-        gmsh.model.geo.mesh.setRecombine(2, surf4, 90)
-        gmsh.model.geo.mesh.setRecombine(2, surf5, 90)
+    def close_loop(self):
+        """
+        Return the outer boundary curve loop for the farfield domain.
+        
+        Returns
+        -------
+        tag : int
+            Tag of the first (outer) curve loop
+        """
+        return self.curveloops[0]
 
     def define_bc(self):
         """
