@@ -138,11 +138,7 @@ database
 !mesh_test.su2
 *.vtk
 *.msh
-<<<<<<< HEAD
-*.vtu
 *.cgns
 *.zip
 *.wrl
-=======
 *.vtu
->>>>>>> 7d48194 (gitignore and version)
