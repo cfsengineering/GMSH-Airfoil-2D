@@ -2,7 +2,7 @@ from pathlib import Path
 from setuptools import setup, find_packages
 
 NAME = "gmshairfoil2d"
-VERSION = "0.2.3"
+VERSION = "0.2.4"
 AUTHOR = "Giacomo Benedetti"
 EMAIL = "giacomo.benedetti@cfse.ch"
 DESCRIPTION = "Python tool to generate 2D mesh around an airfoil"
