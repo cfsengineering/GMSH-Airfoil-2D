@@ -277,15 +277,13 @@ class Circle:
         return gmsh.model.geo.addCurveLoop(self.arcCircle_list)
 
     def define_bc(self):
+        """Create physical group for the circular farfield boundary.
+        
+        Creates a physical group for all arcs forming the circular farfield.
+        This group is marked as "farfield" in the exported mesh (SU2 format).
         """
-        Method that define the marker of the circle
-        for the boundary condition
-        -------
-        """
-
         self.bc = gmsh.model.addPhysicalGroup(self.dim, self.arcCircle_list)
-        self.physical_name = gmsh.model.setPhysicalName(
-            self.dim, self.bc, "farfield")
+        gmsh.model.setPhysicalName(self.dim, self.bc, "farfield")
 
     def rotation(self, angle, origin, axis):
         """
@@ -395,29 +393,21 @@ class Rectangle:
         return CurveLoop(self.lines).tag
 
     def define_bc(self):
+        """Create physical groups for the rectangular domain boundaries.
+        
+        Creates a single physical group "farfield" containing all four boundaries
+        (inlet, outlet, top, and bottom walls).
+        
+        This group is marked in the exported mesh (SU2 format).
         """
-        Method that define the different markers of the rectangle for the boundary condition
-        self.lines[0] => wall_bot
-        self.lines[1] => outlet
-        self.lines[2] => wall_top
-        self.lines[3] => inlet
-        -------
-        """
-
-        self.bc_in = gmsh.model.addPhysicalGroup(
-            self.dim, [self.lines[3].tag], tag=-1)
-        gmsh.model.setPhysicalName(self.dim, self.bc_in, "inlet")
-
-        self.bc_out = gmsh.model.addPhysicalGroup(
-            self.dim, [self.lines[1].tag])
-        gmsh.model.setPhysicalName(self.dim, self.bc_out, "outlet")
-
-        self.bc_wall = gmsh.model.addPhysicalGroup(
-            self.dim, [self.lines[0].tag, self.lines[2].tag]
+        # All boundaries as farfield
+        self.bc_farfield = gmsh.model.addPhysicalGroup(
+            self.dim, 
+            [self.lines[0].tag, self.lines[1].tag, self.lines[2].tag, self.lines[3].tag]
         )
-        gmsh.model.setPhysicalName(self.dim, self.bc_wall, "wall")
+        gmsh.model.setPhysicalName(self.dim, self.bc_farfield, "farfield")
 
-        self.bc = [self.bc_in, self.bc_out, self.bc_wall]
+        self.bc = self.bc_farfield
 
     def rotation(self, angle, origin, axis):
         """
@@ -740,14 +730,14 @@ class AirfoilSpline:
         return CurveLoop([self.upper_spline, self.lower_spline, self.front_spline]).tag
 
     def define_bc(self):
+        """Create physical group for the airfoil surface.
+        
+        Creates a single physical group containing the upper surface, lower surface,
+        and leading edge curves of the airfoil. This group will be marked as "airfoil"
+        in the exported mesh (SU2 format).
         """
-        Method that define the marker of the airfoil for the boundary condition
-        -------
-        """
-
         self.bc = gmsh.model.addPhysicalGroup(
-            self.dim, [self.upper_spline.tag,
-                       self.lower_spline.tag, self.front_spline.tag]
+            self.dim, [self.upper_spline.tag, self.lower_spline.tag, self.front_spline.tag]
         )
         gmsh.model.setPhysicalName(self.dim, self.bc, self.name)
 
