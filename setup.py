@@ -43,8 +43,8 @@ setup(
     install_requires=[
         "gmsh>=4.14",
         "numpy>=1.20.3",
-        "pytest==7.1.3",
-        "requests==2.26.0",
+        "pytest>=7.1.3",
+        "requests>=2.26.0",
     ],
     classifiers=[
         "Programming Language :: Python :: 3.11",
