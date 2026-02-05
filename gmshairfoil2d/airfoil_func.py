@@ -6,8 +6,6 @@ import requests
 
 import gmshairfoil2d.__init__
 
-from numpy import ndarray
-
 LIB_DIR = Path(gmshairfoil2d.__init__.__file__).parents[1]
 database_dir = Path(LIB_DIR, "database")
 
@@ -133,7 +131,7 @@ def get_airfoil_file(airfoil_name):
         sys.exit(1)
 
 
-def get_airfoil_points(airfoil_name: str) -> ndarray:
+def get_airfoil_points(airfoil_name: str) -> list[tuple[float, float, float]]:
     """Load airfoil points from the database.
     
     Parameters
@@ -151,10 +149,10 @@ def get_airfoil_points(airfoil_name: str) -> ndarray:
     ValueError
         If no valid points found for the airfoil
     """
-    # Check if it's a NACA 4-digit code
     if len(airfoil_name) == 4 and airfoil_name.isdigit():
-        # Generate NACA 4-digit airfoil
-        return four_digit_naca_airfoil(airfoil_name, nb_points=100)
+        return four_digit_naca_airfoil(
+            naca_name=airfoil_name,
+        )
 
     get_airfoil_file(airfoil_name)
     airfoil_file = Path(database_dir, f"{airfoil_name}.dat")
@@ -184,7 +182,7 @@ def get_airfoil_points(airfoil_name: str) -> ndarray:
 
     upper_points = airfoil_points[:upper_len]
     lower_points = airfoil_points[upper_len:]
-
+    
     if lower_points and lower_points[0][0] == 0:
         lower_points = lower_points[::-1]
 
@@ -192,40 +190,16 @@ def get_airfoil_points(airfoil_name: str) -> ndarray:
     x_lo, y_lo = zip(*lower_points) if lower_points else ([], [])
 
     cloud_points = [(x, y, 0) for x, y in zip([*x_up, *x_lo], [*y_up, *y_lo])]
-
-    # Reorder points to avoid self-intersections (TE -> upper -> LE -> lower -> TE)
-    pts = np.array([(x, y) for x, y, _ in cloud_points])
-    if pts.size:
-        y_vals = pts[:, 1]
-        upper = pts[y_vals >= 0.0]
-        lower = pts[y_vals < 0.0]
-
-        if upper.size and lower.size:
-            upper_sorted = upper[np.argsort(-upper[:, 0])]
-            lower_sorted = lower[np.argsort(lower[:, 0])]
-            ordered = np.vstack([upper_sorted, lower_sorted])
-        else:
-            centroid = pts.mean(axis=0)
-            angles = np.arctan2(pts[:, 1] - centroid[1], pts[:, 0] - centroid[0])
-            ordered = pts[np.argsort(angles)]
-
-        deduped = [ordered[0]]
-        for point in ordered[1:]:
-            if not np.allclose(point, deduped[-1], atol=1e-9):
-                deduped.append(point)
-
-        cloud_points = [(x, y, 0) for x, y in deduped]
-
     return sorted(set(cloud_points), key=cloud_points.index)
 
 
-def four_digit_naca_airfoil(NACA_name, nb_points=100) -> ndarray:
+def four_digit_naca_airfoil(naca_name: str, nb_points: int = 100):
     """
     Compute the profile of a NACA 4 digits airfoil
 
     Parameters
     ----------
-    NACA_name : str
+    naca_name : str
         4 digit of the NACA airfoil
     nb_points : int, optional
             number of points for the disrcetisation of
@@ -239,9 +213,9 @@ def four_digit_naca_airfoil(NACA_name, nb_points=100) -> ndarray:
     theta_line = np.linspace(0, np.pi, nb_points)
     x_line = 0.5 * (1 - np.cos(theta_line))
 
-    m = int(NACA_name[0]) / 100
-    p = int(NACA_name[1]) / 10
-    t = (int(NACA_name[2]) * 10 + int(NACA_name[3])) / 100
+    m = int(naca_name[0]) / 100
+    p = int(naca_name[1]) / 10
+    t = (int(naca_name[2]) * 10 + int(naca_name[3])) / 100
 
     # thickness line
     y_t = (
@@ -304,4 +278,4 @@ def four_digit_naca_airfoil(NACA_name, nb_points=100) -> ndarray:
     y = np.concatenate((y_u[:-1], np.flip(y_l[1:])), axis=0)
 
     # create the 3d points cloud
-    return np.array([(x[k], y[k], 0) for k in range(0, len(x))])
+    return [(x[k], y[k], 0) for k in range(0, len(x))]

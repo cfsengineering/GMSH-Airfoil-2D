@@ -542,5 +542,6 @@ def main():
         from gmshairfoil2d.config_handler import write_config
         write_config(config_dict, args.save_config)
 
+
 if __name__ == "__main__":
     main()
