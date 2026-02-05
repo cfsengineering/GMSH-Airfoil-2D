@@ -3,7 +3,7 @@ from pathlib import Path
 from unittest.mock import patch, Mock
 
 import gmshairfoil2d.__init__
-from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_file,
+from gmshairfoil2d.airfoil_func import (four_digit_naca_airfoil, get_airfoil_file,
                                         get_all_available_airfoil_names, read_airfoil_from_file)
 from pytest import approx
 
@@ -58,7 +58,7 @@ def test_get_airfoil_file(monkeypatch, tmp_path):
     assert expected_path.read_text() == fake_text
 
 
-def test_NACA_4_digit_geom():
+def test_four_digit_naca_airfoil():
     with open(Path(test_data_dir, "naca0012.txt"), "rb") as f:
         naca0012 = pickle.load(f)
     with open(Path(test_data_dir, "naca4412.txt"), "rb") as f:
@@ -69,11 +69,11 @@ def test_NACA_4_digit_geom():
     """
 
     assert all(
-        [a == approx(b, 1e-3) for a, b in zip(naca0012, NACA_4_digit_geom("0012"))]
+        [a == approx(b, 1e-3) for a, b in zip(naca0012, four_digit_naca_airfoil("0012"))]
     )
 
     assert all(
-        [a == approx(b, 1e-3) for a, b in zip(naca4412, NACA_4_digit_geom("4412"))]
+        [a == approx(b, 1e-3) for a, b in zip(naca4412, four_digit_naca_airfoil("4412"))]
     )
 
 def test_read_airfoil_from_file(tmp_path):

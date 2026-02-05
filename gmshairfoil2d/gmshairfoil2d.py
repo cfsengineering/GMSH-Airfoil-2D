@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 import gmsh
-from gmshairfoil2d.airfoil_func import (NACA_4_digit_geom, get_airfoil_points,
+from gmshairfoil2d.airfoil_func import (four_digit_naca_airfoil, get_airfoil_points,
                                         get_all_available_airfoil_names, read_airfoil_from_file)
 from gmshairfoil2d.geometry_def import (AirfoilSpline, Circle, PlaneSurface,
                                         Rectangle, outofbounds, CType)
@@ -349,7 +349,7 @@ def main():
 
     if args.naca:
         airfoil_name = args.naca
-        cloud_points = NACA_4_digit_geom(airfoil_name)
+        cloud_points = four_digit_naca_airfoil(airfoil_name)
 
     if args.airfoil:
         airfoil_name = args.airfoil

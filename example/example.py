@@ -1,4 +1,4 @@
-from gmshairfoil2d.airfoil_func import NACA_4_digit_geom
+from gmshairfoil2d.airfoil_func import four_digit_naca_airfoil
 from gmshairfoil2d.geometry_def import PlaneSurface, Circle, AirfoilSpline
 import gmsh
 
@@ -6,7 +6,7 @@ import gmsh
 GUI_flag = True
 
 # Generate NACA 4 digit profil
-cloud_points = NACA_4_digit_geom("0012", nb_points=100)
+cloud_points = four_digit_naca_airfoil("0012", nb_points=100)
 
 # Generate Geometry :
 gmsh.initialize()
