@@ -160,8 +160,14 @@ def get_airfoil_points(airfoil_name: str) -> list[tuple[float, float, float]]:
     airfoil_points = []
     with open(airfoil_file) as f:
         for line in f:
+            line = line.strip()
+            if not line or line.startswith(('#', 'Airfoil')):
+                continue
+            parts = line.split()
+            if len(parts) != 2:
+                continue
             try:
-                x, y = map(float, line.strip().split())
+                x, y = map(float, parts)
             except ValueError:
                 continue
             if x > 1 and y > 1:
@@ -171,26 +177,74 @@ def get_airfoil_points(airfoil_name: str) -> list[tuple[float, float, float]]:
     if not airfoil_points:
         raise ValueError(f"No valid points found for airfoil {airfoil_name}")
 
-    n_points = len(airfoil_points)
-    upper_len = n_points // 2
+    def _dedupe_consecutive(points, tol=1e-9):
+        out = []
+        for x, y in points:
+            if not out:
+                out.append((x, y))
+                continue
+            if abs(x - out[-1][0]) <= tol and abs(y - out[-1][1]) <= tol:
+                continue
+            out.append((x, y))
+        return out
 
-    # Try to find split point at (0, 0)
-    for i, (x, y) in enumerate(airfoil_points):
-        if x == y == 0:
-            upper_len = i
-            break
+    def _dedupe_any(points, tol=1e-9):
+        out = []
+        for x, y in points:
+            if any(abs(x - ux) <= tol and abs(y - uy) <= tol for ux, uy in out):
+                continue
+            out.append((x, y))
+        return out
 
-    upper_points = airfoil_points[:upper_len]
-    lower_points = airfoil_points[upper_len:]
-    
-    if lower_points and lower_points[0][0] == 0:
-        lower_points = lower_points[::-1]
+    tol = 1e-9
+    airfoil_points = _dedupe_consecutive(airfoil_points, tol=tol)
 
-    x_up, y_up = zip(*upper_points) if upper_points else ([], [])
-    x_lo, y_lo = zip(*lower_points) if lower_points else ([], [])
+    if len(airfoil_points) < 3:
+        raise ValueError(f"Not enough unique points for airfoil {airfoil_name}")
 
-    cloud_points = [(x, y, 0) for x, y in zip([*x_up, *x_lo], [*y_up, *y_lo])]
-    return sorted(set(cloud_points), key=cloud_points.index)
+    # Split into upper/lower when a LE point repeats (common in UIUC files)
+    min_x = min(x for x, _ in airfoil_points)
+    le_indices = [i for i, (x, _) in enumerate(airfoil_points) if abs(x - min_x) <= tol]
+
+    if len(le_indices) >= 2:
+        split_idx = le_indices[1]
+        upper = airfoil_points[:split_idx]
+        lower = airfoil_points[split_idx:]
+    else:
+        # Fallback: split at first maximum x (trailing edge)
+        max_x = max(x for x, _ in airfoil_points)
+        split_idx = next(i for i, (x, _) in enumerate(airfoil_points) if abs(x - max_x) <= tol)
+        upper = airfoil_points[:split_idx + 1]
+        lower = airfoil_points[split_idx + 1:]
+
+    def _ensure_le_to_te(points):
+        if len(points) < 2:
+            return points
+        return points if points[0][0] <= points[-1][0] else points[::-1]
+
+    upper = _ensure_le_to_te(upper)
+    lower = _ensure_le_to_te(lower)
+
+    # Build a closed loop starting at TE: TE->LE (upper reversed) then LE->TE (lower)
+    if upper and lower:
+        upper = upper[::-1]
+        loop = upper + lower[1:]
+    else:
+        loop = airfoil_points
+
+    # Remove duplicate closing point if present
+    if len(loop) > 1:
+        x0, y0 = loop[0]
+        x1, y1 = loop[-1]
+        if abs(x0 - x1) <= tol and abs(y0 - y1) <= tol:
+            loop.pop()
+
+    loop = _dedupe_any(loop, tol=tol)
+
+    if len(loop) < 3:
+        raise ValueError(f"Not enough unique points for airfoil {airfoil_name}")
+
+    return [(x, y, 0) for x, y in loop]
 
 
 def four_digit_naca_airfoil(naca_name: str, nb_points: int = 100):
