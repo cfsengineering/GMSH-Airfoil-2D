@@ -193,5 +193,13 @@ Or using config file:
 gmshairfoil2d --config example/example6_custom_airfoil_flap.cfg
 ```
 
+### Example 7 (New): Size and orientation selection
+
+Create a x5 airfoil that you flip (around x-axis). If you need rotation use --alpha X flag.
+
+```bash
+gmshairfoil2d --naca 2412 --flip --scale 5.0 --format vtk
+```
+
 This example shows how to load custom airfoil and flap profiles from external .dat files and generate a mesh with flap deflection, useful for using proprietary or custom-designed airfoil geometries.
 ![GMSH result with 2D mesh around a custom flapped airfoil](images/example_flapped_airfoil.png)

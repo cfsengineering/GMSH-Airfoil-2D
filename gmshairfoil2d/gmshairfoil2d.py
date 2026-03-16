@@ -263,6 +263,21 @@ def main():
     )
 
     parser.add_argument(
+        "--scale",
+        type=float,
+        metavar="SCALE",
+        nargs="?",
+        default=1.0,
+        help="Airfoil xy-scaling factor (default 1.0).",
+    )
+
+    parser.add_argument(
+        "--flip",
+        action="store_true",
+        help="Flip airfoil upside down by mirroring across the x-axis",
+    )
+
+    parser.add_argument(
         "--nb_layers",
         type=int,
         metavar="INT",
@@ -336,6 +351,7 @@ def main():
 
     # Airfoil choice
     cloud_points = None
+    flap_points = None
     airfoil_name = None
 
     # Check that only one airfoil source is specified
@@ -363,11 +379,20 @@ def main():
             airfoil_name = Path(args.airfoil_path).stem
             flap_points = read_airfoil_from_file(args.flap_path)
 
+    if args.flip and cloud_points is not None:
+        cloud_points = [(x, -y, z) for x, y, z in cloud_points]
+        if args.flap_path and flap_points is not None:
+            flap_points = [(x, -y, z) for x, y, z in flap_points]
+
     if cloud_points is None:
         print("\nNo airfoil profile specified, exiting")
         print("You must use --naca, --airfoil, or --airfoil_path\n")
         parser.print_help()
         sys.exit()
+
+    cloud_points = [(x * args.scale, y * args.scale, z) for x, y, z in cloud_points]
+    if args.flap_path and flap_points is not None:
+        flap_points = [(x * args.scale, y * args.scale, z) for x, y, z in flap_points]
 
     # Make the points all start by the (0,0) (or minimum of coord x when not exactly 0) and go clockwise
     # --> to be easier to deal with after (in airfoilspline)
